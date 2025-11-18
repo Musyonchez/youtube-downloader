@@ -264,6 +264,19 @@ function createVideoCard(video, isResult = true) {
         thumbnailContainer.appendChild(statusBadge);
     }
 
+    // YouTube preview button
+    const youtubeBtn = document.createElement('a');
+    youtubeBtn.className = 'youtube-preview-btn';
+    youtubeBtn.href = video.url;
+    youtubeBtn.target = '_blank';
+    youtubeBtn.rel = 'noopener noreferrer';
+    youtubeBtn.title = 'Preview on YouTube';
+    youtubeBtn.innerHTML = '▶️';
+    youtubeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent card selection when clicking preview
+    };
+    thumbnailContainer.appendChild(youtubeBtn);
+
     // Info
     const info = document.createElement('div');
     info.className = 'video-info';
