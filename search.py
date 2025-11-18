@@ -140,7 +140,8 @@ class YouTubeSearcher:
 
     def validate_url(self, url: str) -> tuple[bool, str]:
         """Validate if URL is a valid YouTube URL and return type."""
-        if 'playlist' in url.lower():
+        # Check if it's a playlist, mix, or radio (has list= parameter)
+        if 'list=' in url:
             return True, 'playlist'
         elif 'youtube.com' in url or 'youtu.be' in url:
             return True, 'video'
