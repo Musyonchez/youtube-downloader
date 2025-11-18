@@ -47,7 +47,10 @@
                     placeholder="Search YouTube or paste URL..."
                     onkeypress="handleSearchEnter(event)"
                 >
-                <button onclick="handleSearch()">🔍 Search</button>
+                <button id="search-btn" onclick="handleSearch()">
+                    <span id="search-btn-text">🔍 Search</span>
+                    <span id="search-spinner" class="spinner hidden"></span>
+                </button>
             </div>
             <div class="search-type">
                 <label>
