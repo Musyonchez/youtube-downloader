@@ -1,7 +1,6 @@
 """YouTube search and video information retrieval."""
 import yt_dlp
 from typing import List, Dict, Optional
-from youtubesearchpython import VideosSearch
 from utils import extract_video_id, format_duration
 from rich.console import Console
 
@@ -19,24 +18,40 @@ class YouTubeSearcher:
         }
 
     def search_by_name(self, query: str, limit: int = 10) -> List[Dict]:
-        """Search YouTube by name and return results."""
+        """Search YouTube by name and return results using yt-dlp."""
         try:
             console.print(f"[cyan]Searching for: {query}...[/cyan]")
-            videos_search = VideosSearch(query, limit=limit)
-            results = videos_search.result()
 
-            formatted_results = []
-            for video in results.get('result', []):
-                formatted_results.append({
-                    'video_id': video['id'],
-                    'title': video['title'],
-                    'channel': video['channel']['name'],
-                    'duration': video.get('duration', 'Unknown'),
-                    'url': video['link'],
-                    'thumbnail': video.get('thumbnails', [{}])[0].get('url', '')
-                })
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'skip_download': True,
+            }
 
-            return formatted_results
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Use yt-dlp's search functionality
+                search_query = f"ytsearch{limit}:{query}"
+                info = ydl.extract_info(search_query, download=False)
+
+                if info is None or 'entries' not in info:
+                    return []
+
+                formatted_results = []
+                for video in info['entries']:
+                    if video is None:
+                        continue
+
+                    formatted_results.append({
+                        'video_id': video.get('id', ''),
+                        'title': video.get('title', 'Unknown'),
+                        'channel': video.get('uploader', video.get('channel', 'Unknown')),
+                        'duration': format_duration(video.get('duration', 0)),
+                        'url': video.get('url', f"https://www.youtube.com/watch?v={video.get('id', '')}"),
+                        'thumbnail': video.get('thumbnail', '')
+                    })
+
+                return formatted_results
 
         except Exception as e:
             console.print(f"[red]Error searching: {str(e)}[/red]")
