@@ -161,8 +161,14 @@ def sanitize_filename(filename: str) -> str:
     return filename
 
 
-def format_duration(seconds: int) -> str:
+def format_duration(seconds) -> str:
     """Format duration in seconds to MM:SS or HH:MM:SS."""
+    if seconds is None or seconds == 0:
+        return "00:00"
+
+    # Convert to int to handle float values from yt-dlp
+    seconds = int(seconds)
+
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     secs = seconds % 60
