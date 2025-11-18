@@ -6,6 +6,10 @@ let selectedVideos = new Set();
 let queue = [];
 let config = {};
 
+// Pagination
+const ITEMS_PER_PAGE = 20;
+let currentPage = 1;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStatus();
@@ -101,18 +105,21 @@ async function handleSearch() {
 async function searchByName(query) {
     const data = await apiCall('/api/search', 'POST', { query, limit: 15 });
     searchResults = data.results;
+    currentPage = 1; // Reset to first page
     renderResults();
 }
 
 async function searchByUrl(url) {
     const data = await apiCall('/api/video-info', 'POST', { url });
     searchResults = [data];
+    currentPage = 1; // Reset to first page
     renderResults();
 }
 
 async function searchByPlaylist(url) {
     const data = await apiCall('/api/playlist-info', 'POST', { url });
     searchResults = data.videos;
+    currentPage = 1; // Reset to first page
     renderResults();
     showToast(`Found ${data.summary.total} videos (${data.summary.new} new)`, 'success');
 }
@@ -128,12 +135,49 @@ function renderResults() {
 
     grid.innerHTML = '';
 
-    searchResults.forEach(video => {
+    // Calculate pagination
+    const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, searchResults.length);
+    const pageResults = searchResults.slice(startIndex, endIndex);
+
+    // Render current page videos
+    pageResults.forEach(video => {
         const card = createVideoCard(video, true);
         grid.appendChild(card);
     });
 
+    // Add pagination controls if needed
+    if (totalPages > 1) {
+        const paginationDiv = document.createElement('div');
+        paginationDiv.className = 'pagination-controls';
+        paginationDiv.innerHTML = `
+            <button onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>
+                ← Previous
+            </button>
+            <span class="page-info">
+                Page ${currentPage} of ${totalPages}
+                (Showing ${startIndex + 1}-${endIndex} of ${searchResults.length})
+            </span>
+            <button onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>
+                Next →
+            </button>
+        `;
+        grid.appendChild(paginationDiv);
+    }
+
     updateAddButton();
+}
+
+// Change page
+function changePage(direction) {
+    const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
+    currentPage += direction;
+    currentPage = Math.max(1, Math.min(currentPage, totalPages));
+    renderResults();
+
+    // Scroll to top of results
+    document.getElementById('results-grid').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Render Queue
