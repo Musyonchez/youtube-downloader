@@ -42,13 +42,17 @@ class YouTubeSearcher:
                     if video is None:
                         continue
 
+                    video_id = video.get('id', '')
+                    # Construct YouTube thumbnail URL from video ID
+                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg" if video_id else ''
+
                     formatted_results.append({
-                        'video_id': video.get('id', ''),
+                        'video_id': video_id,
                         'title': video.get('title', 'Unknown'),
                         'channel': video.get('uploader', video.get('channel', 'Unknown')),
                         'duration': format_duration(video.get('duration', 0)),
-                        'url': video.get('url', f"https://www.youtube.com/watch?v={video.get('id', '')}"),
-                        'thumbnail': video.get('thumbnail', '')
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
+                        'thumbnail': thumbnail_url
                     })
 
                 return formatted_results
@@ -68,6 +72,8 @@ class YouTubeSearcher:
 
                 # Extract relevant information
                 video_id = extract_video_id(url) or info.get('id', '')
+                # Use YouTube thumbnail URL or fall back to info thumbnail
+                thumbnail_url = info.get('thumbnail', '') or f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
 
                 return {
                     'video_id': video_id,
@@ -75,7 +81,7 @@ class YouTubeSearcher:
                     'channel': info.get('uploader', 'Unknown'),
                     'duration': format_duration(info.get('duration', 0)),
                     'url': url if 'youtube.com' in url or 'youtu.be' in url else f"https://www.youtube.com/watch?v={video_id}",
-                    'thumbnail': info.get('thumbnail', '')
+                    'thumbnail': thumbnail_url
                 }
 
         except Exception as e:
@@ -114,13 +120,16 @@ class YouTubeSearcher:
                     if not video_id:
                         continue
 
+                    # Construct YouTube thumbnail URL
+                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+
                     videos.append({
                         'video_id': video_id,
                         'title': entry.get('title', 'Unknown'),
                         'channel': entry.get('uploader', info.get('uploader', 'Unknown')),
                         'duration': format_duration(entry.get('duration', 0)),
                         'url': f"https://www.youtube.com/watch?v={video_id}",
-                        'thumbnail': entry.get('thumbnail', '')
+                        'thumbnail': thumbnail_url
                     })
 
                 return videos

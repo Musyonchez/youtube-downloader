@@ -169,9 +169,41 @@ function createVideoCard(video, isResult = true) {
 
     const thumbnail = document.createElement('img');
     thumbnail.className = 'thumbnail';
-    thumbnail.src = video.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail';
     thumbnail.alt = video.title;
     thumbnail.loading = 'lazy';
+
+    // Only add error handler if we have a thumbnail URL
+    if (video.thumbnail) {
+        thumbnail.src = video.thumbnail;
+
+        // Fallback if thumbnail fails to load
+        thumbnail.onerror = function() {
+            this.style.display = 'none';
+            // Add a placeholder background to the container
+            thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            thumbnailContainer.style.display = 'flex';
+            thumbnailContainer.style.alignItems = 'center';
+            thumbnailContainer.style.justifyContent = 'center';
+
+            // Add music icon as fallback
+            const icon = document.createElement('div');
+            icon.style.fontSize = '48px';
+            icon.textContent = '🎵';
+            thumbnailContainer.insertBefore(icon, thumbnailContainer.firstChild);
+        };
+    } else {
+        // No thumbnail URL provided, show placeholder
+        thumbnail.style.display = 'none';
+        thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        thumbnailContainer.style.display = 'flex';
+        thumbnailContainer.style.alignItems = 'center';
+        thumbnailContainer.style.justifyContent = 'center';
+
+        const icon = document.createElement('div');
+        icon.style.fontSize = '48px';
+        icon.textContent = '🎵';
+        thumbnailContainer.insertBefore(icon, thumbnailContainer.firstChild);
+    }
 
     const durationBadge = document.createElement('div');
     durationBadge.className = 'duration-badge';
