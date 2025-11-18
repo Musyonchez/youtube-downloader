@@ -1,0 +1,5 @@
+yt-dlp>=2024.0.0
+rich>=13.0.0
+questionary>=2.0.0
+youtube-search-python>=1.6.6
+mutagen>=1.47.0
