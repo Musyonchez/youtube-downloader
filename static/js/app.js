@@ -127,7 +127,7 @@ async function handleSearch() {
 }
 
 async function searchByName(query) {
-    const data = await apiCall('/api/search', 'POST', { query, limit: 15 });
+    const data = await apiCall('/api/search', 'POST', { query, limit: 60 });
     searchResults = data.results;
     currentPage = 1; // Reset to first page
     renderResults();
