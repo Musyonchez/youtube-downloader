@@ -5,6 +5,9 @@ downloads/
 hold/hold1/
 hold/hold2/
 
+# Temporary recovery folder
+temp_recovery/
+
 # Python cache
 __pycache__/
 *.py[cod]
