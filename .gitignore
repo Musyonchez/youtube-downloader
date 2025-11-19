@@ -1,6 +1,10 @@
 # Download folder (keep tracked songs in downloaded.json instead)
 downloads/
 
+# Hold folders with music files
+hold/hold1/
+hold/hold2/
+
 # Python cache
 __pycache__/
 *.py[cod]
