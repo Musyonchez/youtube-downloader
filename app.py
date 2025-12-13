@@ -71,10 +71,74 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    """Serve the main HTML page."""
+    """Serve the new landing page."""
     html_file = Path("templates/index.html")
     if html_file.exists():
         return FileResponse(html_file)
+    return HTMLResponse(content="<h1>Template not found</h1>", status_code=404)
+
+
+@app.get("/old", response_class=HTMLResponse)
+async def read_old():
+    """Serve the old app page."""
+    html_file = Path("templates/old.html")
+    if html_file.exists():
+        return FileResponse(html_file)
+    return HTMLResponse(content="<h1>Template not found</h1>", status_code=404)
+
+
+@app.get("/app/{mode}", response_class=HTMLResponse)
+async def read_app(mode: str):
+    """Serve the app page with different search modes."""
+    if mode not in ["name", "playlist", "url"]:
+        return HTMLResponse(content="<h1>Invalid mode</h1>", status_code=404)
+    
+    html_file = Path("templates/app.html")
+    if html_file.exists():
+        # Read and render template with mode variable
+        with open(html_file, 'r') as f:
+            content = f.read()
+            # Simple template replacement
+            content = content.replace("{{ mode }}", mode)
+            content = content.replace("{{ mode.title() }}", mode.title())
+            content = content.replace("{% if mode == 'name' %}", "")
+            content = content.replace("{% elif mode == 'playlist' %}", "")
+            content = content.replace("{% else %}", "")
+            content = content.replace("{% endif %}", "")
+            
+            # Show appropriate text based on mode
+            if mode == 'name':
+                content = content.replace("Search for videos by name or keyword", "Search for videos by name or keyword")
+                content = content.replace("Paste a YouTube playlist URL to download multiple videos", "")
+                content = content.replace("Paste a single YouTube video URL", "")
+                content = content.replace("Search for videos...", "Search for videos...")
+                content = content.replace("Paste playlist URL...", "")
+                content = content.replace("Paste video URL...", "")
+                content = content.replace("Enter a search term to find videos", "Enter a search term to find videos")
+                content = content.replace("Paste a playlist URL to get started", "")
+                content = content.replace("Paste a video URL to begin", "")
+            elif mode == 'playlist':
+                content = content.replace("Search for videos by name or keyword", "")
+                content = content.replace("Paste a YouTube playlist URL to download multiple videos", "Paste a YouTube playlist URL to download multiple videos")
+                content = content.replace("Paste a single YouTube video URL", "")
+                content = content.replace("Search for videos...", "")
+                content = content.replace("Paste playlist URL...", "Paste playlist URL...")
+                content = content.replace("Paste video URL...", "")
+                content = content.replace("Enter a search term to find videos", "")
+                content = content.replace("Paste a playlist URL to get started", "Paste a playlist URL to get started")
+                content = content.replace("Paste a video URL to begin", "")
+            else:  # url
+                content = content.replace("Search for videos by name or keyword", "")
+                content = content.replace("Paste a YouTube playlist URL to download multiple videos", "")
+                content = content.replace("Paste a single YouTube video URL", "Paste a single YouTube video URL")
+                content = content.replace("Search for videos...", "")
+                content = content.replace("Paste playlist URL...", "")
+                content = content.replace("Paste video URL...", "Paste video URL...")
+                content = content.replace("Enter a search term to find videos", "")
+                content = content.replace("Paste a playlist URL to get started", "")
+                content = content.replace("Paste a video URL to begin", "Paste a video URL to begin")
+            
+            return HTMLResponse(content=content)
     return HTMLResponse(content="<h1>Template not found</h1>", status_code=404)
 
 

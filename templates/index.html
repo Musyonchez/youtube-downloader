@@ -3,112 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube MP3 Downloader</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="description" content="Convert YouTube videos to high-quality MP3 files. Fast, free, and easy to use. Access from any device on your network.">
+    <title>YouTube MP3 Downloader - High Quality Audio Downloads</title>
+    <link rel="stylesheet" href="/static/css/landing.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1>🎵 YouTube MP3 Downloader</h1>
-            <div class="stats">
-                <span class="stat">📥 Queue: <strong id="queue-count">0</strong></span>
-                <span class="stat">✓ Downloaded: <strong id="downloaded-count">0</strong></span>
-            </div>
-            <button class="settings-btn" onclick="toggleSettings()">⚙️ Settings</button>
-        </header>
-
-        <!-- Settings Panel (Hidden by default) -->
-        <div id="settings-panel" class="settings-panel hidden">
-            <h3>Settings</h3>
-            <div class="setting-item">
-                <label>Audio Quality:</label>
-                <select id="audio-quality">
-                    <option value="128">128 kbps</option>
-                    <option value="192">192 kbps</option>
-                    <option value="256">256 kbps</option>
-                    <option value="320" selected>320 kbps</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <label>Download Directory:</label>
-                <input type="text" id="download-dir" value="./downloads">
-            </div>
-            <button onclick="saveSettings()">Save Settings</button>
-            <button onclick="toggleSettings()">Close</button>
-        </div>
-
-        <!-- Search Section -->
-        <section class="search-section">
-            <div class="search-bar">
-                <input
-                    type="text"
-                    id="search-input"
-                    placeholder="Search YouTube or paste URL..."
-                    onkeypress="handleSearchEnter(event)"
-                >
-                <button id="search-btn" onclick="handleSearch()">
-                    <span id="search-btn-text">🔍 Search</span>
-                    <span id="search-spinner" class="spinner hidden"></span>
-                </button>
-            </div>
-            <div class="search-type">
-                <label>
-                    <input type="radio" name="search-type" value="name" checked> Search by Name
-                </label>
-                <label>
-                    <input type="radio" name="search-type" value="url"> Video URL
-                </label>
-                <label>
-                    <input type="radio" name="search-type" value="playlist"> Playlist URL
-                </label>
-            </div>
-        </section>
-
-        <!-- Results Section -->
-        <section class="results-section">
-            <div class="section-header">
-                <h2>Search Results</h2>
-                <button id="add-selected-btn" onclick="addSelectedToQueue()" class="hidden">
-                    Add Selected to Queue
-                </button>
-            </div>
-            <div id="results-grid" class="results-grid">
-                <p class="placeholder">Search for videos to get started</p>
-            </div>
-        </section>
-
-        <!-- Queue Section -->
-        <section class="queue-section">
-            <div class="section-header">
-                <h2>Download Queue</h2>
-                <div class="queue-actions">
-                    <button onclick="downloadQueue()" id="download-btn" class="primary-btn" disabled>
-                        ⬇️ Download All
-                    </button>
-                    <button onclick="clearQueue()" id="clear-btn" disabled>
-                        🗑️ Clear Queue
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <span class="logo-text">YT Downloader</span>
+                </div>
+                <div class="nav-links">
+                    <a href="/app/name">Name</a>
+                    <a href="/app/playlist">Playlist</a>
+                    <a href="/app/url">URL</a>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
                     </button>
                 </div>
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
-            <div id="queue-grid" class="queue-grid">
-                <p class="placeholder">Queue is empty</p>
-            </div>
-        </section>
-
-        <!-- Download Progress -->
-        <div id="download-progress" class="download-progress hidden">
-            <h3>Downloading...</h3>
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
-            </div>
-            <p id="progress-text">Preparing download...</p>
         </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/app/name" onclick="toggleMobileMenu()">Name</a>
+        <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
+        <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
     </div>
 
-    <!-- Toast Notifications -->
-    <div id="toast" class="toast hidden"></div>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">
+                        Download YouTube Music
+                        <span class="gradient-text">Anywhere, Anytime</span>
+                    </h1>
+                    <p class="hero-description">
+                        Transform your favorite YouTube videos into high-quality MP3 files. 
+                        Access from your phone, tablet, or PC. Queue songs remotely and download them on your home server.
+                    </p>
+                    <div class="hero-cta">
+                        <a href="/old" class="btn-large btn-primary">
+                            Get Started Free
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M4.16675 10H15.8334M15.8334 10L10.0001 4.16666M15.8334 10L10.0001 15.8333" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                        <a href="#how-it-works" class="btn-large btn-secondary">
+                            Learn More
+                        </a>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">320kbps</div>
+                            <div class="stat-label">Audio Quality</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">100%</div>
+                            <div class="stat-label">Free Forever</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">Any Device</div>
+                            <div class="stat-label">Cross-Platform</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="mockup-container">
+                        <div class="mockup-glow"></div>
+                        <div class="mockup-window">
+                            <div class="window-header">
+                                <div class="window-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <div class="window-title">localhost:8000</div>
+                            </div>
+                            <div class="window-content">
+                                <div class="search-mockup">
+                    <div class="search-bar-mockup">
+                        <span class="search-text">Search YouTube or paste URL...</span>
+                    </div>
+                                    <div class="results-mockup">
+                                        <div class="result-card"></div>
+                                        <div class="result-card"></div>
+                                        <div class="result-card"></div>
+                                        <div class="result-card"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <script src="/static/js/app.js"></script>
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Everything You Need</h2>
+                <p class="section-description">Powerful features that make downloading music effortless</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3 class="feature-title">Multi-Device Access</h3>
+                    <p class="feature-description">Browse and queue songs from your phone while downloads happen on your PC. Works on any device with a browser.</p>
+                </div>
+                <div class="feature-card">
+                    <h3 class="feature-title">Smart Queue System</h3>
+                    <p class="feature-description">Add multiple songs, manage your queue, and download them all at once. Automatic duplicate detection keeps your library clean.</p>
+                </div>
+                <div class="feature-card">
+                    <h3 class="feature-title">High-Quality Audio</h3>
+                    <p class="feature-description">Download at up to 320kbps MP3. Automatic metadata tagging with artist, title, and album information.</p>
+                </div>
+                <div class="feature-card">
+                    <h3 class="feature-title">Lightning Fast</h3>
+                    <p class="feature-description">Powered by yt-dlp for maximum speed and reliability. Download entire playlists in minutes.</p>
+                </div>
+                <div class="feature-card">
+                    <h3 class="feature-title">3 Search Modes</h3>
+                    <p class="feature-description">Search by name, paste a single video URL, or add entire playlists at once. Visual thumbnails for easy browsing.</p>
+                </div>
+                <div class="feature-card">
+                    <h3 class="feature-title">Privacy First</h3>
+                    <p class="feature-description">Runs on your local network. No data sent to external servers. Your downloads, your privacy.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">How It Works</h2>
+                <p class="section-description">Get started in three simple steps</p>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">01</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Search or Paste URL</h3>
+                        <p class="step-description">
+                            Search for your favorite songs by name, or paste a YouTube URL. 
+                            Works with single videos or entire playlists.
+                        </p>
+                    </div>
+                    <div class="step-visual">
+                        <div class="visual-box">
+                            <div class="visual-search">
+                                <div class="visual-input"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="step step-reverse">
+                    <div class="step-visual">
+                        <div class="visual-box">
+                            <div class="visual-grid">
+                                <div class="visual-card"></div>
+                                <div class="visual-card"></div>
+                                <div class="visual-card"></div>
+                                <div class="visual-card selected"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-number">02</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Select & Add to Queue</h3>
+                        <p class="step-description">
+                            Browse results with thumbnails, select the songs you want, 
+                            and add them to your download queue. Do this from any device!
+                        </p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">03</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Download & Enjoy</h3>
+                        <p class="step-description">
+                            Hit the download button and watch your queue process. 
+                            High-quality MP3 files saved to your chosen directory with proper metadata.
+                        </p>
+                    </div>
+                    <div class="step-visual">
+                        <div class="visual-box">
+                            <div class="visual-download">
+                                <div class="download-bar">
+                                    <div class="download-progress"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="use-cases">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Perfect For</h2>
+                <p class="section-description">Real-world scenarios where YT Downloader shines</p>
+            </div>
+            <div class="use-cases-grid">
+                <div class="use-case-card">
+                    <h3 class="use-case-title">Browsing from Bed</h3>
+                    <p class="use-case-description">
+                        Lying in bed with your phone? Search and add songs to your queue. 
+                        Next morning, they're ready in your music folder.
+                    </p>
+                </div>
+                <div class="use-case-card">
+                    <h3 class="use-case-title">Building Playlists</h3>
+                    <p class="use-case-description">
+                        Found an amazing YouTube playlist? Paste the URL, preview all videos, 
+                        select which ones you want, and download all at once.
+                    </p>
+                </div>
+                <div class="use-case-card">
+                    <h3 class="use-case-title">Quick Downloads</h3>
+                    <p class="use-case-description">
+                        Heard a great song? Copy the YouTube URL on any device, 
+                        paste it in the app, and it's in your library in seconds.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                <p class="section-description">Everything you need to know</p>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>Is this really free?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes, completely free! This is a self-hosted application that runs on your own hardware. No subscriptions, no hidden fees, no ads.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>How do I access it from my phone?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Make sure your phone is on the same WiFi network as your PC. Then open your browser and navigate to http://YOUR-PC-IP:8000 (you can find your PC's IP by running 'hostname -I' on Linux).</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>What audio quality can I download?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>You can download at 128, 192, 256, or 320 kbps MP3. The default is 320 kbps for the best quality. You can change this in the settings.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>Can I download entire playlists?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolutely! Just paste the playlist URL, select which videos you want from the preview, and add them all to your queue. You can download up to 1000 videos from a single playlist.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>Is it legal to download YouTube videos?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>This tool is for personal use only. Downloading copyrighted content without permission may be illegal in your jurisdiction. Please respect copyright laws and only download content you have the right to download.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>What if a download fails?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9L12 16L5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Downloads can fail due to network issues or if the video is unavailable. The app will show you which downloads succeeded and which failed. You can try re-adding failed videos to the queue.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Start Downloading?</h2>
+                <p class="cta-description">
+                    Build your music library the easy way. Free forever, runs on your hardware.
+                </p>
+                <a href="/old" class="btn-large btn-primary">
+                    Launch Application
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4.16675 10H15.8334M15.8334 10L10.0001 4.16666M15.8334 10L10.0001 15.8333" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-text">YT Downloader</span>
+                    </div>
+                    <p class="footer-tagline">Made for music lovers</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Product</h4>
+                        <a href="#features">Features</a>
+                        <a href="#how-it-works">How It Works</a>
+                        <a href="/old">Launch App</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="#faq">FAQ</a>
+                        <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>
+                        <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Tech Stack</h4>
+                        <a href="#">Python</a>
+                        <a href="#">FastAPI</a>
+                        <a href="#">yt-dlp</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 YT Downloader. For personal use only.</p>
+                <p class="footer-disclaimer">Respect copyright laws. Only download content you have the right to download.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/landing.js"></script>
 </body>
 </html>

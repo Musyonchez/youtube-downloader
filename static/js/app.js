@@ -5,6 +5,7 @@ let searchResults = [];
 let selectedVideos = new Set();
 let queue = [];
 let config = {};
+let queueCollapsed = false;
 
 // Pagination
 const ITEMS_PER_PAGE = 20;
@@ -12,10 +13,102 @@ let currentPage = 1;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    initTheme();
     await loadStatus();
     await loadQueue();
     await loadConfig();
+    updateQueueUI();
     setupWebSocket();
+    
+    // Check screen size and auto-collapse queue on mobile
+    if (window.innerWidth <= 968) {
+        queueCollapsed = true;
+        document.getElementById('queuePanel')?.classList.add('collapsed');
+        document.getElementById('queueFloatBtn')?.classList.add('show');
+    }
+});
+
+// Theme Management
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    const sunIcons = document.querySelectorAll('.sun-icon');
+    const moonIcons = document.querySelectorAll('.moon-icon');
+    
+    if (theme === 'light') {
+        sunIcons.forEach(icon => icon.style.display = 'none');
+        moonIcons.forEach(icon => icon.style.display = 'block');
+    } else {
+        sunIcons.forEach(icon => icon.style.display = 'block');
+        moonIcons.forEach(icon => icon.style.display = 'none');
+    }
+}
+
+// Initialize theme on page load
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+// Mobile Menu Toggle
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('active');
+}
+
+// Queue Toggle
+function toggleQueue() {
+    const panel = document.getElementById('queuePanel');
+    const floatBtn = document.getElementById('queueFloatBtn');
+    
+    queueCollapsed = !queueCollapsed;
+    
+    if (queueCollapsed) {
+        panel?.classList.add('collapsed');
+        floatBtn?.classList.add('show');
+    } else {
+        panel?.classList.remove('collapsed');
+        floatBtn?.classList.remove('show');
+    }
+}
+
+// Update Queue UI
+function updateQueueUI() {
+    const floatBtn = document.getElementById('queueFloatBtn');
+    const badge = document.getElementById('queueBadge');
+    
+    if (floatBtn && badge) {
+        if (queue.length > 0) {
+            floatBtn.classList.remove('inactive');
+            badge.textContent = queue.length;
+            badge.classList.remove('hidden');
+        } else {
+            floatBtn.classList.add('inactive');
+            badge.classList.add('hidden');
+        }
+    }
+}
+
+// Settings Modal
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.toggle('hidden');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('settings-modal');
+    if (e.target === modal?.querySelector('.modal-overlay')) {
+        toggleSettings();
+    }
 });
 
 // API Calls
@@ -107,16 +200,17 @@ async function handleSearch() {
         return;
     }
 
-    const searchType = document.querySelector('input[name="search-type"]:checked').value;
+    // Get search mode from global variable set in HTML
+    const searchMode = window.SEARCH_MODE || 'name';
 
     setSearchLoading(true);
 
     try {
-        if (searchType === 'name') {
+        if (searchMode === 'name') {
             await searchByName(input);
-        } else if (searchType === 'url') {
+        } else if (searchMode === 'url') {
             await searchByUrl(input);
-        } else if (searchType === 'playlist') {
+        } else if (searchMode === 'playlist') {
             await searchByPlaylist(input);
         }
     } catch (error) {
@@ -153,7 +247,16 @@ function renderResults() {
     const grid = document.getElementById('results-grid');
 
     if (searchResults.length === 0) {
-        grid.innerHTML = '<p class="placeholder">No results found</p>';
+        grid.innerHTML = `
+            <div class="empty-state">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <h3>No Results Found</h3>
+                <p>Try a different search term</p>
+            </div>
+        `;
         return;
     }
 
@@ -167,7 +270,7 @@ function renderResults() {
 
     // Render current page videos
     pageResults.forEach(video => {
-        const card = createVideoCard(video, true);
+        const card = createVideoCard(video);
         grid.appendChild(card);
     });
 
@@ -189,8 +292,6 @@ function renderResults() {
         `;
         grid.appendChild(paginationDiv);
     }
-
-    updateAddButton();
 }
 
 // Change page
@@ -206,23 +307,34 @@ function changePage(direction) {
 
 // Render Queue
 function renderQueue() {
-    const grid = document.getElementById('queue-grid');
+    const content = document.getElementById('queueContent');
 
     if (queue.length === 0) {
-        grid.innerHTML = '<p class="placeholder">Queue is empty</p>';
+        content.innerHTML = `
+            <div class="empty-state-small">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                    <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"></path>
+                    <path d="M12 3v6"></path>
+                </svg>
+                <p>Queue is empty</p>
+            </div>
+        `;
         return;
     }
 
-    grid.innerHTML = '';
+    content.innerHTML = '';
 
     queue.forEach(video => {
-        const card = createVideoCard(video, false);
-        grid.appendChild(card);
+        const item = createQueueItem(video);
+        content.appendChild(item);
     });
+    
+    updateQueueUI();
 }
 
 // Create Video Card
-function createVideoCard(video, isResult = true) {
+function createVideoCard(video) {
     const card = document.createElement('div');
     card.className = 'video-card';
     card.dataset.videoId = video.video_id;
@@ -240,37 +352,12 @@ function createVideoCard(video, isResult = true) {
     thumbnail.alt = video.title;
     thumbnail.loading = 'lazy';
 
-    // Only add error handler if we have a thumbnail URL
     if (video.thumbnail) {
         thumbnail.src = video.thumbnail;
-
-        // Fallback if thumbnail fails to load
         thumbnail.onerror = function() {
             this.style.display = 'none';
-            // Add a placeholder background to the container
             thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            thumbnailContainer.style.display = 'flex';
-            thumbnailContainer.style.alignItems = 'center';
-            thumbnailContainer.style.justifyContent = 'center';
-
-            // Add music icon as fallback
-            const icon = document.createElement('div');
-            icon.style.fontSize = '48px';
-            icon.textContent = '🎵';
-            thumbnailContainer.insertBefore(icon, thumbnailContainer.firstChild);
         };
-    } else {
-        // No thumbnail URL provided, show placeholder
-        thumbnail.style.display = 'none';
-        thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        thumbnailContainer.style.display = 'flex';
-        thumbnailContainer.style.alignItems = 'center';
-        thumbnailContainer.style.justifyContent = 'center';
-
-        const icon = document.createElement('div');
-        icon.style.fontSize = '48px';
-        icon.textContent = '🎵';
-        thumbnailContainer.insertBefore(icon, thumbnailContainer.firstChild);
     }
 
     const durationBadge = document.createElement('div');
@@ -283,23 +370,10 @@ function createVideoCard(video, isResult = true) {
     // Status badge
     if (video.status && video.status !== 'new') {
         const statusBadge = document.createElement('div');
-        statusBadge.className = `status-badge ${video.status}`;
-        statusBadge.textContent = video.status === 'downloaded' ? '✓' : '📥';
+        statusBadge.className = 'status-badge';
+        statusBadge.textContent = video.status === 'downloaded' ? 'Downloaded' : 'Queued';
         thumbnailContainer.appendChild(statusBadge);
     }
-
-    // YouTube preview button
-    const youtubeBtn = document.createElement('a');
-    youtubeBtn.className = 'youtube-preview-btn';
-    youtubeBtn.href = video.url;
-    youtubeBtn.target = '_blank';
-    youtubeBtn.rel = 'noopener noreferrer';
-    youtubeBtn.title = 'Preview on YouTube';
-    youtubeBtn.innerHTML = '▶️';
-    youtubeBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent card selection when clicking preview
-    };
-    thumbnailContainer.appendChild(youtubeBtn);
 
     // Info
     const info = document.createElement('div');
@@ -317,74 +391,97 @@ function createVideoCard(video, isResult = true) {
     info.appendChild(title);
     info.appendChild(channel);
 
+    // Add to queue button
+    if (video.status === 'new') {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'add-to-queue-btn';
+        addBtn.textContent = 'Add to Queue';
+        addBtn.onclick = (e) => {
+            e.stopPropagation();
+            addSingleToQueue(video);
+        };
+        info.appendChild(addBtn);
+    }
+
     card.appendChild(thumbnailContainer);
     card.appendChild(info);
-
-    // Click handler
-    if (isResult) {
-        if (video.status === 'new') {
-            card.onclick = () => toggleSelection(video);
-        } else {
-            card.style.cursor = 'not-allowed';
-        }
-    } else {
-        card.onclick = () => removeFromQueue(video.video_id);
-    }
 
     return card;
 }
 
-// Toggle Selection
-function toggleSelection(video) {
-    const videoId = video.video_id;
+// Create Queue Item
+function createQueueItem(video) {
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    item.dataset.videoId = video.video_id;
 
-    if (selectedVideos.has(videoId)) {
-        selectedVideos.delete(videoId);
-    } else {
-        selectedVideos.add(videoId);
-    }
+    const title = document.createElement('div');
+    title.className = 'queue-item-title';
+    title.textContent = video.title;
 
-    // Update UI
-    const card = document.querySelector(`[data-video-id="${videoId}"]`);
-    if (card) {
-        card.classList.toggle('selected');
-    }
+    const channel = document.createElement('div');
+    channel.className = 'queue-item-channel';
+    channel.textContent = video.channel;
 
-    updateAddButton();
+    const actions = document.createElement('div');
+    actions.className = 'queue-item-actions';
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'btn-primary';
+    downloadBtn.textContent = 'Download';
+    downloadBtn.onclick = () => downloadSingle(video.video_id);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-secondary';
+    removeBtn.textContent = 'Remove';
+    removeBtn.onclick = () => removeFromQueue(video.video_id);
+
+    actions.appendChild(downloadBtn);
+    actions.appendChild(removeBtn);
+
+    item.appendChild(title);
+    item.appendChild(channel);
+    item.appendChild(actions);
+
+    return item;
 }
 
-// Update Add Button
-function updateAddButton() {
-    const btn = document.getElementById('add-selected-btn');
-
-    if (selectedVideos.size > 0) {
-        btn.classList.remove('hidden');
-        btn.textContent = `Add ${selectedVideos.size} to Queue`;
-    } else {
-        btn.classList.add('hidden');
-    }
-}
-
-// Add Selected to Queue
-async function addSelectedToQueue() {
-    const videos = searchResults.filter(v => selectedVideos.has(v.video_id));
-
-    if (videos.length === 0) {
-        return;
-    }
-
+// Add single video to queue
+async function addSingleToQueue(video) {
     try {
-        const data = await apiCall('/api/library/add-multiple', 'POST', videos);
-        showToast(`Added ${data.added} videos to queue`, 'success');
-
-        selectedVideos.clear();
+        await apiCall('/api/library/add', 'POST', video);
+        showToast('Added to queue', 'success');
         await loadStatus();
         await loadQueue();
-        renderResults(); // Re-render to update status
+        renderResults(); // Re-render to update button states
     } catch (error) {
         showToast(error.message, 'error');
     }
 }
+
+// Download single item from queue
+async function downloadSingle(videoId) {
+    try {
+        await apiCall('/api/download', 'POST', [videoId]);
+        showToast('Download started', 'success');
+        
+        // Poll for updates
+        const interval = setInterval(async () => {
+            await loadStatus();
+            await loadQueue();
+            
+            const stillInQueue = queue.some(v => v.video_id === videoId);
+            if (!stillInQueue) {
+                clearInterval(interval);
+                showToast('Download complete!', 'success');
+            }
+        }, 2000);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// Functions removed - using quick add buttons instead
 
 // Remove from Queue
 async function removeFromQueue(videoId) {

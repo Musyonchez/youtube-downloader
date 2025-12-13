@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube MP3 Downloader - {{ mode.title() }}</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-content">
+                <div class="logo">
+                    <a href="/">
+                        <span class="logo-text">YT Downloader</span>
+                    </a>
+                </div>
+                <div class="nav-links">
+                    <a href="/app/name" class="{{ 'active' if mode == 'name' else '' }}">Name</a>
+                    <a href="/app/playlist" class="{{ 'active' if mode == 'playlist' else '' }}">Playlist</a>
+                    <a href="/app/url" class="{{ 'active' if mode == 'url' else '' }}">URL</a>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <button class="settings-btn" onclick="toggleSettings()" aria-label="Settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m-9-9h6m6 0h6"></path>
+                            <path d="M12 1v6M1 12h6m6 0h6m-6 6v-6"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/app/name" onclick="toggleMobileMenu()">Name</a>
+        <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
+        <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="toggleSettings()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" onclick="toggleSettings()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <label>Audio Quality:</label>
+                    <select id="audio-quality">
+                        <option value="128">128 kbps</option>
+                        <option value="192">192 kbps</option>
+                        <option value="256">256 kbps</option>
+                        <option value="320" selected>320 kbps</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Download Directory:</label>
+                    <input type="text" id="download-dir" value="./downloads">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="toggleSettings()">Cancel</button>
+                <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="app-container">
+        <!-- Search Area (80%) -->
+        <main class="search-area">
+            <div class="search-header">
+                <h1>Search by {{ mode.title() }}</h1>
+                <p class="search-subtitle">
+                    {% if mode == 'name' %}
+                    Search for videos by name or keyword
+                    {% elif mode == 'playlist' %}
+                    Paste a YouTube playlist URL to download multiple videos
+                    {% else %}
+                    Paste a single YouTube video URL
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="{% if mode == 'name' %}Search for videos...{% elif mode == 'playlist' %}Paste playlist URL...{% else %}Paste video URL...{% endif %}"
+                    onkeypress="handleSearchEnter(event)"
+                >
+                <button id="search-btn" onclick="handleSearch()" class="btn-primary">
+                    <span id="search-btn-text">Search</span>
+                    <span id="search-spinner" class="spinner hidden"></span>
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="search-stats">
+                <span class="stat">Queue: <strong id="queue-count">0</strong></span>
+                <span class="stat">Downloaded: <strong id="downloaded-count">0</strong></span>
+            </div>
+
+            <!-- Results Grid -->
+            <div id="results-container" class="results-container">
+                <div id="results-grid" class="results-grid">
+                    <div class="empty-state">
+                        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <h3>Start Searching</h3>
+                        <p>
+                            {% if mode == 'name' %}
+                            Enter a search term to find videos
+                            {% elif mode == 'playlist' %}
+                            Paste a playlist URL to get started
+                            {% else %}
+                            Paste a video URL to begin
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Queue Panel (20%) -->
+        <aside class="queue-panel" id="queuePanel">
+            <div class="queue-header">
+                <h2>Queue</h2>
+                <button class="queue-close" onclick="toggleQueue()" aria-label="Close queue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="queue-content" id="queueContent">
+                <div class="empty-state-small">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                        <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"></path>
+                        <path d="M12 3v6"></path>
+                    </svg>
+                    <p>Queue is empty</p>
+                </div>
+            </div>
+            <div class="queue-actions">
+                <button onclick="downloadQueue()" id="download-btn" class="btn-primary" disabled>
+                    Download All
+                </button>
+                <button onclick="clearQueue()" id="clear-btn" class="btn-secondary" disabled>
+                    Clear
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Floating Queue Button (when collapsed) -->
+    <button class="queue-float-btn" id="queueFloatBtn" onclick="toggleQueue()" aria-label="Open queue">
+        <svg class="shelf-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="4" rx="1"></rect>
+            <rect x="3" y="10" width="18" height="4" rx="1"></rect>
+            <rect x="3" y="17" width="18" height="4" rx="1"></rect>
+        </svg>
+        <span class="queue-badge" id="queueBadge">0</span>
+    </button>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+        // Pass the search mode to JavaScript
+        window.SEARCH_MODE = '{{ mode }}';
+    </script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
