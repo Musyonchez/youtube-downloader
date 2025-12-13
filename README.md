@@ -1,32 +1,46 @@
 # YouTube MP3 Downloader (Web App)
 
-A modern web-based YouTube downloader with thumbnail preview and intuitive UI. Access from any device on your network - PC, phone, or tablet!
+A modern, professional SaaS-quality web application for downloading YouTube videos as high-quality MP3 files. Beautiful UI, real-time progress tracking, and accessible from any device on your network!
 
 ## Features
 
-- **🌐 Web Interface**: Access from any device with a browser
-- **📱 Mobile Friendly**: Browse and queue songs from your phone while downloads happen on PC
-- **🖼️ Thumbnail Preview**: See video thumbnails before adding to queue
-- **3 Search Modes**:
-  - Search by name with visual results
-  - Add by single video URL
-  - Add entire playlists at once
-- **Smart Queue Management**:
-  - Visual grid of queued videos
-  - Status indicators (New, Queued, Downloaded)
-  - Duplicate detection using video IDs
-- **High-Quality Audio**:
-  - Default 320kbps MP3 (configurable)
-  - Automatic metadata tagging (artist, title, album)
-  - Clean filename format: "Artist - Title.mp3"
-- **Real-Time Updates**:
-  - Download progress tracking
-  - Live status updates
-  - Toast notifications
+### 🎨 Modern UI/UX
+- **Professional Landing Page**: SaaS-quality design with gradients and smooth animations
+- **Light/Dark Theme Toggle**: Seamless theme switching with localStorage persistence
+- **Split-Screen Layout**: 70% search results, 30% collapsible queue panel
+- **Grid & Compact Views**: Toggle between card grid or compact list view
+- **Skeleton Loaders**: Beautiful shimmer effects while searching
+- **Responsive Design**: Perfect on desktop, tablet, and mobile
+
+### 🔍 Three Search Modes
+- **Search by Name**: Find videos with visual grid results and thumbnails
+- **Single URL**: Paste a YouTube video URL for quick downloads
+- **Playlist**: Add entire playlists at once with preview
+
+### 📥 Smart Queue Management
+- **Real-Time Progress**: Live download status with pulsing indicators
+- **Quick Add Buttons**: One-click add from search results
+- **Individual Downloads**: Download single items or entire queue
+- **Status Tracking**: Visual indicators (Pending, Downloading, Downloaded)
+- **Floating Queue Button**: Always accessible with badge counter
+- **Duplicate Prevention**: Won't download the same video twice
+
+### 🎵 High-Quality Audio
+- **320kbps MP3** (configurable: 128/192/256/320 kbps)
+- **Automatic Metadata**: Artist, title, and album tags
+- **Clean Filenames**: "Artist - Title.mp3" format
+- **Download History**: Track all 6,200+ downloads in `downloaded.json`
+
+### ⚡ User Experience
+- **YouTube Preview**: Hover thumbnails to see play button, opens video in new tab
+- **Pagination**: Navigate large search results easily
+- **Keyboard Shortcuts**: Enter to search, ESC to close modals
+- **Toast Notifications**: Non-intrusive status messages
+- **Empty States**: Helpful SVG icons and messages
 
 ## Installation
 
-1. **Navigate to project**:
+1. **Clone or navigate to project**:
    ```bash
    cd ~/Code/youtube-downloader
    ```
@@ -39,12 +53,26 @@ A modern web-based YouTube downloader with thumbnail preview and intuitive UI. A
 
 3. **Install dependencies**:
    ```bash
+   # Production dependencies
+   make install
+   
+   # Or manually
    pip install -r requirements.txt
+   
+   # Optional: Development tools (linting, type checking)
+   make install-dev
    ```
 
 4. **Install FFmpeg** (required for audio conversion):
    ```bash
-   sudo pacman -S ffmpeg  # Arch Linux
+   # Arch Linux
+   sudo pacman -S ffmpeg
+   
+   # Ubuntu/Debian
+   sudo apt install ffmpeg
+   
+   # macOS
+   brew install ffmpeg
    ```
 
 ## Usage
@@ -62,8 +90,11 @@ python app.py
 
 The server will start and display:
 ```
+🎵 YouTube MP3 Downloader
+==========================
+✅ Starting server...
 🖥️  Local:   http://localhost:8000
-📱 Network: http://192.168.1.x:8000
+📱 Network: http://10.1.9.38:8000
 ```
 
 ### Access from Different Devices
@@ -74,56 +105,76 @@ The server will start and display:
 
 ### Using the Web Interface
 
-1. **Search for Videos**:
-   - Enter search query or paste URL
-   - Select search type (Name, URL, or Playlist)
-   - Click Search
+#### Landing Page
+- Visit `http://localhost:8000` for the beautiful landing page
+- Choose your search mode: **Name**, **Playlist**, or **URL**
+- Toggle light/dark theme with the theme button
 
-2. **Browse Results**:
-   - See thumbnails and video info
-   - Videos show status badges:
-     - No badge = New (can add to queue)
-     - ✓ = Already downloaded
-     - 📥 = Already in queue
+#### Search Modes
+1. **Search by Name** (`/app/name`):
+   - Enter keywords (e.g., "Ed Sheeran Perfect")
+   - Browse visual grid with thumbnails
+   - Toggle between Grid and Compact view
+   - Click "Add to Queue" on any video
 
-3. **Add to Queue**:
-   - Click videos to select (they'll highlight in blue)
-   - Click "Add Selected to Queue"
+2. **Playlist** (`/app/playlist`):
+   - Paste YouTube playlist URL
+   - See all videos with metadata
+   - Add individual videos or entire playlist
 
-4. **Download**:
-   - View your queue at the bottom
-   - Click "Download All" to start
-   - Progress updates in real-time
+3. **URL** (`/app/url`):
+   - Paste single video URL
+   - Preview video info
+   - Add to queue
 
-5. **Settings**:
-   - Click ⚙️ Settings
-   - Change audio quality (128-320kbps)
-   - Change download directory
+#### Queue Management
+- **View Queue**: Toggle panel with X button or floating shelf icon
+- **Status Indicators**:
+  - Gray dot = Pending
+  - Purple pulsing dot = Currently downloading
+  - Green badge = Already downloaded
+- **Download Options**:
+  - "Download All" - Process entire queue sequentially
+  - Individual download buttons per item
+  - Real-time progress updates
+
+#### Settings
+- Click ⚙️ icon in navbar
+- **Audio Quality**: 128/192/256/320 kbps
+- **Download Directory**: Custom path
+- Settings persist across sessions
 
 ## Project Structure
 
 ```
 youtube-downloader/
-├── app.py                 # FastAPI server
+├── app.py                    # FastAPI server & routes
 ├── api/
 │   ├── __init__.py
-│   └── routes.py         # API endpoints
+│   └── routes.py            # API endpoints
 ├── static/
 │   ├── css/
-│   │   └── style.css     # Modern dark theme
+│   │   ├── landing.css      # Landing page styles
+│   │   ├── app.css          # App split-screen layout
+│   │   └── style.css        # Legacy styles
 │   └── js/
-│       └── app.js        # Frontend logic
+│       ├── landing.js       # Landing page interactions
+│       └── app.js           # App logic (search, queue, downloads)
 ├── templates/
-│   └── index.html        # Main web page
-├── utils.py              # Storage & helpers
-├── search.py             # YouTube search
-├── downloader.py         # Download logic
-├── run.sh                # Startup script
-├── requirements.txt      # Python dependencies
-├── config.json           # User settings
-├── library.json          # Download queue
-├── downloaded.json       # Download history
-└── downloads/            # MP3 files
+│   ├── index.html           # Landing page
+│   ├── app.html             # Main app (3 search modes)
+│   └── old.html             # Legacy backup
+├── utils.py                 # Storage & helper functions
+├── search.py                # YouTube search with yt-dlp
+├── downloader.py            # Download logic & progress tracking
+├── run.sh                   # Startup script
+├── Makefile                 # Development commands
+├── requirements.txt         # Production dependencies
+├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8)
+├── config.json              # User settings (quality, directory)
+├── library.json             # Download queue (current)
+├── downloaded.json          # Download history (6,200+ tracks)
+└── downloads/               # MP3 output directory
 ```
 
 ## API Endpoints
@@ -157,38 +208,79 @@ Default settings in `config.json`:
 
 Settings can be changed through the web UI or by editing the file.
 
+## Development
+
+### Available Commands
+
+```bash
+# Run all code quality checks
+make check
+
+# Format code with ruff
+make format
+
+# Run type checking
+make type-check
+
+# Run linting
+make lint
+
+# Clean cache files
+make clean
+
+# Run application
+make run
+```
+
+All commands automatically use the virtual environment.
+
+### Code Quality
+
+- **Syntax Check**: ✅ All files compile without errors
+- **Type Checking**: Uses mypy with type hints
+- **Linting**: Ruff + Flake8 for code quality
+- **Formatting**: Automatic code formatting with ruff
+
 ## Use Cases
 
 ### Scenario 1: Browsing from Phone
-1. Lying in bed with your phone
-2. Open the web app on phone
-3. Search and add songs to queue
+1. Lying in bed scrolling through music
+2. Open web app on phone (`http://<pc-ip>:8000`)
+3. Search and add songs to queue with one tap
 4. Downloads happen automatically on PC
-5. Next day, songs are ready in your music folder
+5. Wake up with music ready in your library!
 
 ### Scenario 2: Building a Playlist
 1. Find a YouTube playlist you like
-2. Paste the playlist URL
-3. See all videos with thumbnails
-4. Select which ones to download
-5. Click "Add Selected to Queue"
-6. Download all at once
+2. Switch to Playlist mode
+3. Paste URL - see all 50+ videos with thumbnails
+4. Toggle to compact view for better overview
+5. Quick-add your favorites
+6. Download entire queue with one click
 
 ### Scenario 3: Quick Single Download
-1. Find a song on YouTube (on any device)
-2. Copy the URL
-3. Paste in web app
+1. Hear a song you like on YouTube
+2. Copy URL on any device
+3. Open web app, paste in URL mode
 4. Add to queue and download
-5. Done!
+5. High-quality MP3 ready in seconds!
 
-## Advantages Over Desktop GUI
+### Scenario 4: Theme Preference
+1. Prefer light mode? Toggle theme button
+2. Preference saves automatically
+3. Works across all pages (landing + app)
+4. Synced via localStorage
 
-✅ Access from **any device** (phone, tablet, laptop)
-✅ Browse while **away from PC**
-✅ **Modern web UI** looks great
-✅ **Thumbnails** work perfectly
-✅ No need to sit at your PC
-✅ Can manage downloads **remotely**
+## Advantages Over Desktop Apps
+
+✅ **Access anywhere**: Phone, tablet, laptop - same WiFi, same app  
+✅ **Modern UI**: SaaS-quality design with smooth animations  
+✅ **Real-time updates**: See download progress live  
+✅ **No installation**: Works in any browser  
+✅ **Remote control**: Queue from bed, download on PC  
+✅ **Responsive**: Perfect layout on any screen size  
+✅ **Theme support**: Light/dark mode with one click  
+✅ **View options**: Grid or compact list view
 
 ## Troubleshooting
 
@@ -247,15 +339,78 @@ This tool is for personal use only. Downloading copyrighted content without perm
 
 ## Tech Stack
 
-- **Backend**: FastAPI, yt-dlp, mutagen
-- **Frontend**: Vanilla JavaScript, modern CSS
-- **Storage**: JSON files (git-friendly)
-- **Real-time**: WebSockets
+### Backend
+- **FastAPI**: Modern Python web framework with async support
+- **yt-dlp**: YouTube downloading and metadata extraction
+- **mutagen**: MP3 tagging (artist, title, album)
+- **rich**: Beautiful terminal progress bars
+
+### Frontend
+- **Vanilla JavaScript**: No frameworks, pure ES6+
+- **Modern CSS**: CSS Grid, Flexbox, custom properties
+- **Responsive Design**: Mobile-first approach
+- **localStorage**: Theme and view preference persistence
+
+### Storage
+- **JSON Files**: Git-friendly, human-readable
+- **No Database**: Simple file-based storage
+- **Download History**: Track 6,000+ songs efficiently
+
+### Features
+- **WebSockets**: Real-time progress updates
+- **Page Visibility API**: Smart polling when tab is active
+- **Skeleton Loaders**: Shimmer effects during loading
+- **Toast Notifications**: Non-intrusive feedback
 
 ## License
 
 Free to use for personal projects.
 
+## Screenshots
+
+### Landing Page
+- Modern gradient hero section
+- Three search mode options
+- Light/dark theme toggle
+
+### App Interface
+- 70/30 split-screen layout
+- Search results with thumbnails
+- Collapsible queue panel
+- Real-time download progress
+
+### Mobile View
+- Full-screen queue overlay
+- Responsive grid layout
+- Touch-friendly controls
+
+---
+
+## Changelog
+
+### v2.0.0 (December 2025)
+- ✨ Complete UI redesign with SaaS-quality landing page
+- ✨ Split-screen layout (70% results, 30% queue)
+- ✨ Light/dark theme toggle with persistence
+- ✨ Grid/compact view toggle for search results
+- ✨ Skeleton loading animations
+- ✨ Real-time download progress indicators
+- ✨ Quick-add buttons on video cards
+- ✨ YouTube preview button on thumbnails
+- ✨ Pagination for large result sets
+- ✨ Floating queue button with badge counter
+- 🔧 Improved mobile responsiveness
+- 🔧 Better keyboard shortcuts (Enter, ESC)
+- 🔧 Enhanced empty states with SVG icons
+
+### v1.0.0 (Previous)
+- Basic web interface
+- Search and download functionality
+- Queue management
+- Settings panel
+
 ---
 
 Made with ❤️ for music lovers who want to build their own library
+
+**6,211 songs downloaded and counting!** 🎵
