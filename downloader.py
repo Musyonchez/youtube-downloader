@@ -1,13 +1,13 @@
 """YouTube downloader with progress tracking and metadata tagging."""
-import os
-import yt_dlp
 from pathlib import Path
-from typing import Dict, Optional
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+
+import yt_dlp
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3NoHeaderError
 from mutagen.mp3 import MP3
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn
+
 from utils import sanitize_filename
 
 console = Console()
@@ -42,7 +42,7 @@ class YouTubeDownloader:
             if self.task_id is not None:
                 self.progress.update(self.task_id, completed=100, total=100)
 
-    def download_audio(self, video_info: Dict) -> Optional[str]:
+    def download_audio(self, video_info: dict) -> str | None:
         """Download video as MP3 audio file."""
         try:
             url = video_info['url']
@@ -102,7 +102,7 @@ class YouTubeDownloader:
             console.print(f"[red]✗ Error downloading {video_info['title']}: {str(e)}[/red]")
             return None
 
-    def _tag_mp3(self, file_path: Path, video_info: Dict):
+    def _tag_mp3(self, file_path: Path, video_info: dict):
         """Add metadata tags to MP3 file."""
         try:
             # Try to load existing tags
@@ -110,8 +110,9 @@ class YouTubeDownloader:
                 audio = EasyID3(file_path)
             except ID3NoHeaderError:
                 # Create new ID3 tag if none exists
-                audio = MP3(file_path)
-                audio.add_tags()
+                mp3 = MP3(file_path)
+                mp3.add_tags()
+                mp3.save()
                 audio = EasyID3(file_path)
 
             # Set tags
@@ -124,7 +125,7 @@ class YouTubeDownloader:
         except Exception as e:
             console.print(f"[yellow]Warning: Could not tag file: {str(e)}[/yellow]")
 
-    def download_batch(self, video_list: list[Dict]) -> list[Dict]:
+    def download_batch(self, video_list: list[dict]) -> list[dict]:
         """Download multiple videos and return results."""
         results = []
 

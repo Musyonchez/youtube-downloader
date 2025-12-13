@@ -1,16 +1,16 @@
 """API routes for YouTube downloader."""
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from typing import List, Optional
-import sys
 import os
+import sys
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 
 # Add parent directory to path to import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils import Storage
-from search import YouTubeSearcher
 from downloader import YouTubeDownloader
+from search import YouTubeSearcher
+from utils import Storage
 
 router = APIRouter()
 storage = Storage()
@@ -166,7 +166,7 @@ async def add_to_library(video: VideoItem) -> dict:
 
 
 @router.post("/api/library/add-multiple")
-async def add_multiple_to_library(videos: List[VideoItem]) -> dict:
+async def add_multiple_to_library(videos: list[VideoItem]) -> dict:
     """Add multiple videos to library."""
     added = 0
     skipped = 0
@@ -224,7 +224,7 @@ async def update_config(config: dict) -> dict:
 
 
 # Background task for downloading
-def download_task(video_ids: List[str] = None):
+def download_task(video_ids: list[str] | None = None):
     """Background task to download videos."""
     library = storage.load_library()
 
@@ -251,7 +251,7 @@ def download_task(video_ids: List[str] = None):
 
 
 @router.post("/api/download")
-async def start_download(background_tasks: BackgroundTasks, video_ids: Optional[List[str]] = None) -> dict:
+async def start_download(background_tasks: BackgroundTasks, video_ids: list[str] | None = None) -> dict:
     """Start downloading library (or specific videos)."""
     library = storage.load_library()
 

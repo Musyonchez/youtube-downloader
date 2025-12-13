@@ -23,12 +23,17 @@ if [ $? -ne 0 ]; then
 fi
 
 # Get local IP
-LOCAL_IP=$(hostname -I | awk '{print $1}')
+LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+if [ -z "$LOCAL_IP" ]; then
+    LOCAL_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n1)
+fi
 
 echo "✅ Starting server..."
 echo ""
 echo "🖥️  Local:   http://localhost:8000"
-echo "📱 Network: http://$LOCAL_IP:8000"
+if [ -n "$LOCAL_IP" ]; then
+    echo "📱 Network: http://$LOCAL_IP:8000"
+fi
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""

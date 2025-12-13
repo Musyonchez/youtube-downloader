@@ -1,8 +1,8 @@
 """YouTube search and video information retrieval."""
 import yt_dlp
-from typing import List, Dict, Optional
-from utils import extract_video_id, format_duration
 from rich.console import Console
+
+from utils import extract_video_id, format_duration
 
 console = Console()
 
@@ -17,7 +17,7 @@ class YouTubeSearcher:
             'extract_flat': True,
         }
 
-    def search_by_name(self, query: str, limit: int = 10) -> List[Dict]:
+    def search_by_name(self, query: str, limit: int = 10) -> list[dict]:
         """Search YouTube by name and return results using yt-dlp."""
         try:
             console.print(f"[cyan]Searching for: {query}...[/cyan]")
@@ -61,7 +61,7 @@ class YouTubeSearcher:
             console.print(f"[red]Error searching: {str(e)}[/red]")
             return []
 
-    def get_video_info(self, url: str) -> Optional[Dict]:
+    def get_video_info(self, url: str) -> dict | None:
         """Get video information from URL."""
         try:
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
@@ -88,10 +88,10 @@ class YouTubeSearcher:
             console.print(f"[red]Error getting video info: {str(e)}[/red]")
             return None
 
-    def get_playlist_videos(self, playlist_url: str) -> List[Dict]:
+    def get_playlist_videos(self, playlist_url: str) -> list[dict]:
         """Get all videos from a playlist URL."""
         try:
-            console.print(f"[cyan]Fetching playlist information...[/cyan]")
+            console.print("[cyan]Fetching playlist information...[/cyan]")
 
             ydl_opts = {
                 'quiet': True,

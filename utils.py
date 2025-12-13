@@ -1,9 +1,8 @@
 """Utility functions for JSON storage, config management, and duplicate checking."""
 import json
-import os
-from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
+from pathlib import Path
+from typing import Any
 
 
 class Storage:
@@ -28,7 +27,7 @@ class Storage:
             self._write_json(self.downloaded_file, [])
 
     @staticmethod
-    def get_default_config() -> Dict:
+    def get_default_config() -> dict:
         """Return default configuration."""
         return {
             "audio_quality": "320",
@@ -37,25 +36,25 @@ class Storage:
             "last_updated": datetime.now().strftime("%Y-%m-%d")
         }
 
-    def _read_json(self, file_path: Path) -> any:
+    def _read_json(self, file_path: Path) -> Any:
         """Read and parse JSON file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             return [] if file_path != self.config_file else self.get_default_config()
 
-    def _write_json(self, file_path: Path, data: any):
+    def _write_json(self, file_path: Path, data: Any):
         """Write data to JSON file."""
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     # Config operations
-    def load_config(self) -> Dict:
+    def load_config(self) -> dict:
         """Load configuration."""
         return self._read_json(self.config_file)
 
-    def save_config(self, config: Dict):
+    def save_config(self, config: dict):
         """Save configuration."""
         config['last_updated'] = datetime.now().strftime("%Y-%m-%d")
         self._write_json(self.config_file, config)
@@ -67,15 +66,15 @@ class Storage:
         self.save_config(config)
 
     # Library operations
-    def load_library(self) -> List[Dict]:
+    def load_library(self) -> list[dict]:
         """Load library (queue to download)."""
         return self._read_json(self.library_file)
 
-    def save_library(self, library: List[Dict]):
+    def save_library(self, library: list[dict]):
         """Save library."""
         self._write_json(self.library_file, library)
 
-    def add_to_library(self, item: Dict):
+    def add_to_library(self, item: dict):
         """Add item to library."""
         library = self.load_library()
         library.append(item)
@@ -92,15 +91,15 @@ class Storage:
         self.save_library([])
 
     # Downloaded operations
-    def load_downloaded(self) -> List[Dict]:
+    def load_downloaded(self) -> list[dict]:
         """Load downloaded history."""
         return self._read_json(self.downloaded_file)
 
-    def save_downloaded(self, downloaded: List[Dict]):
+    def save_downloaded(self, downloaded: list[dict]):
         """Save downloaded history."""
         self._write_json(self.downloaded_file, downloaded)
 
-    def add_to_downloaded(self, item: Dict):
+    def add_to_downloaded(self, item: dict):
         """Add item to downloaded history (permanent record)."""
         downloaded = self.load_downloaded()
         # Add download timestamp
@@ -129,7 +128,7 @@ class Storage:
             return 'new'
 
 
-def extract_video_id(url: str) -> Optional[str]:
+def extract_video_id(url: str) -> str | None:
     """Extract video ID from YouTube URL."""
     import re
 
