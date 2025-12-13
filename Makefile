@@ -1,5 +1,13 @@
 .PHONY: help check lint format type-check syntax install-dev install clean run
 
+# Detect virtual environment
+VENV := venv
+PYTHON := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+MYPY := $(VENV)/bin/mypy
+RUFF := $(VENV)/bin/ruff
+FLAKE8 := $(VENV)/bin/flake8
+
 help:
 	@echo "YouTube Downloader - Available commands:"
 	@echo ""
@@ -15,11 +23,12 @@ help:
 
 # Install production dependencies
 install:
-	pip install -r requirements.txt
+	@if [ ! -d "$(VENV)" ]; then python -m venv $(VENV); fi
+	$(PIP) install -r requirements.txt
 
 # Install development dependencies
 install-dev: install
-	pip install -r requirements-dev.txt
+	$(PIP) install -r requirements-dev.txt
 
 # Run all checks
 check: syntax type-check lint
@@ -29,24 +38,24 @@ check: syntax type-check lint
 # Check Python syntax
 syntax:
 	@echo "🔍 Checking Python syntax..."
-	@python -m py_compile app.py downloader.py search.py utils.py api/__init__.py api/routes.py
+	@$(PYTHON) -m py_compile app.py downloader.py search.py utils.py api/__init__.py api/routes.py
 	@echo "✅ Syntax check passed"
 
 # Run type checking
 type-check:
 	@echo "🔍 Running type checks..."
-	@mypy app.py downloader.py search.py utils.py api/ --ignore-missing-imports --no-strict-optional || true
+	@$(MYPY) app.py downloader.py search.py utils.py api/ --ignore-missing-imports --no-strict-optional || true
 
 # Run linting
 lint:
 	@echo "🔍 Running linting..."
-	@ruff check . || true
-	@flake8 app.py downloader.py search.py utils.py api/ --max-line-length=120 --ignore=E501,W503 || true
+	@$(RUFF) check . || true
+	@$(FLAKE8) app.py downloader.py search.py utils.py api/ --max-line-length=120 --ignore=E501,W503 || true
 
 # Format code
 format:
 	@echo "✨ Formatting code..."
-	@ruff format .
+	@$(RUFF) format .
 
 # Run the application
 run:
