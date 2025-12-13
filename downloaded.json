@@ -6862,5 +6862,93 @@
     "success": true,
     "file_path": "downloads/twenty one pilots - twenty one pilots - Chlorine (Official Video).mp3",
     "downloaded_at": "2025-11-19 05:37:49"
+  },
+  {
+    "video_id": "ko70cExuzZM",
+    "title": "Taylor Swift - The Fate of Ophelia (Official Music Video)",
+    "channel": "Taylor Swift",
+    "duration": "03:59",
+    "url": "https://www.youtube.com/watch?v=ko70cExuzZM",
+    "thumbnail": "https://img.youtube.com/vi/ko70cExuzZM/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Taylor Swift - Taylor Swift - The Fate of Ophelia (Official Music Video).mp3",
+    "downloaded_at": "2025-12-13 20:08:01"
+  },
+  {
+    "video_id": "ZxZRkfcnAOw",
+    "title": "CPR - Cupcakke Lyrics",
+    "channel": "comfort zone",
+    "duration": "03:31",
+    "url": "https://www.youtube.com/watch?v=ZxZRkfcnAOw",
+    "thumbnail": "https://img.youtube.com/vi/ZxZRkfcnAOw/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/comfort zone - CPR - Cupcakke Lyrics.mp3",
+    "downloaded_at": "2025-12-13 20:08:01"
+  },
+  {
+    "video_id": "q7qdpyjHyNk",
+    "title": "Mareux - The Perfect Girl (Official Music Video)",
+    "channel": "Mareux",
+    "duration": "03:40",
+    "url": "https://www.youtube.com/watch?v=q7qdpyjHyNk",
+    "thumbnail": "https://img.youtube.com/vi/q7qdpyjHyNk/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Mareux - Mareux - The Perfect Girl (Official Music Video).mp3",
+    "downloaded_at": "2025-12-13 20:12:25"
+  },
+  {
+    "video_id": "9SciUYMSnBs",
+    "title": "Sauti Sol - Short N Sweet  ft Nyashinski (Official Music Video) SMS [Skiza 1051907] to 811",
+    "channel": "Sauti Sol",
+    "duration": "03:45",
+    "url": "https://www.youtube.com/watch?v=9SciUYMSnBs",
+    "thumbnail": "https://img.youtube.com/vi/9SciUYMSnBs/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - Sauti Sol - Short N Sweet ft Nyashinski (Official Music Video) SMS [Skiza 1051907] to 811.mp3",
+    "downloaded_at": "2025-12-13 20:15:29"
+  },
+  {
+    "video_id": "z1TZUJI50Hw",
+    "title": "Sauti Sol - Midnight Train (Official Audio) SMS [Skiza 9935656] to 811",
+    "channel": "Sauti Sol",
+    "duration": "03:53",
+    "url": "https://www.youtube.com/watch?v=z1TZUJI50Hw",
+    "thumbnail": "https://img.youtube.com/vi/z1TZUJI50Hw/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - Sauti Sol - Midnight Train (Official Audio) SMS [Skiza 9935656] to 811.mp3",
+    "downloaded_at": "2025-12-13 20:15:29"
+  },
+  {
+    "video_id": "Yu2Tk9NlkVo",
+    "title": "SAUTI SOL - INSECURE (OFFICIAL VIDEO) SMS [Skiza 9935652] to 811",
+    "channel": "Sauti Sol",
+    "duration": "03:14",
+    "url": "https://www.youtube.com/watch?v=Yu2Tk9NlkVo",
+    "thumbnail": "https://img.youtube.com/vi/Yu2Tk9NlkVo/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - SAUTI SOL - INSECURE (OFFICIAL VIDEO) SMS [Skiza 9935652] to 811.mp3",
+    "downloaded_at": "2025-12-13 20:17:16"
+  },
+  {
+    "video_id": "BS02l0cw140",
+    "title": "Sauti Sol - Isabella (Official Music Video) SMS [Skiza 1066769] to 811",
+    "channel": "Sauti Sol",
+    "duration": "04:02",
+    "url": "https://www.youtube.com/watch?v=BS02l0cw140",
+    "thumbnail": "https://img.youtube.com/vi/BS02l0cw140/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - Sauti Sol - Isabella (Official Music Video) SMS [Skiza 1066769] to 811.mp3",
+    "downloaded_at": "2025-12-13 20:17:26"
+  },
+  {
+    "video_id": "lEJw64Zl28U",
+    "title": "SAUTI SOL - SURA YAKO (OFFICIAL MUSIC VIDEO) SMS [Skiza 1063395] to 811",
+    "channel": "Sauti Sol",
+    "duration": "03:58",
+    "url": "https://www.youtube.com/watch?v=lEJw64Zl28U",
+    "thumbnail": "https://img.youtube.com/vi/lEJw64Zl28U/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - SAUTI SOL - SURA YAKO (OFFICIAL MUSIC VIDEO) SMS [Skiza 1063395] to 811.mp3",
+    "downloaded_at": "2025-12-13 20:17:37"
   }
 ]

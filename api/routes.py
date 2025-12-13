@@ -241,13 +241,20 @@ def download_task(video_ids: list[str] | None = None):
         audio_quality=config['audio_quality']
     )
 
-    results = downloader.download_batch(library)
-
-    # Update storage
-    for result in results:
-        if result['success']:
+    # Download each video individually and update queue immediately
+    for video_info in library:
+        file_path = downloader.download_audio(video_info)
+        
+        # Update storage immediately after each download
+        if file_path:
+            result = {
+                **video_info,
+                'success': True,
+                'file_path': file_path
+            }
             storage.add_to_downloaded(result)
-            storage.remove_from_library(result['video_id'])
+            storage.remove_from_library(video_info['video_id'])
+        # If download fails, leave it in queue
 
 
 @router.post("/api/download")

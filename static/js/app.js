@@ -6,6 +6,7 @@ let selectedVideos = new Set();
 let queue = [];
 let config = {};
 let queueCollapsed = false;
+let isDownloading = false;
 
 // Pagination
 const ITEMS_PER_PAGE = 20;
@@ -115,6 +116,34 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    // ESC key to close modals and panels
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        const settingsModal = document.getElementById('settings-modal');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const queuePanel = document.getElementById('queuePanel');
+        
+        // Close settings modal if open
+        if (settingsModal && !settingsModal.classList.contains('hidden')) {
+            toggleSettings();
+            return;
+        }
+        
+        // Close mobile menu if open
+        if (mobileMenu && mobileMenu.classList.contains('active')) {
+            toggleMobileMenu();
+            return;
+        }
+        
+        // Close queue panel if open on mobile (width <= 968px)
+        if (queuePanel && window.innerWidth <= 968 && !queuePanel.classList.contains('collapsed')) {
+            toggleQueue();
+            return;
+        }
+    }
+});
+
 // API Calls
 async function apiCall(endpoint, method = 'GET', body = null) {
     const options = {
@@ -159,6 +188,7 @@ async function loadQueue() {
     try {
         const data = await apiCall('/api/library');
         queue = data.library;
+        console.log('Queue loaded:', queue.length, 'items');
         renderQueue();
     } catch (error) {
         console.error('Failed to load queue:', error);
@@ -360,6 +390,12 @@ function changePage(direction) {
 // Render Queue
 function renderQueue() {
     const content = document.getElementById('queueContent');
+    
+    // Check if element exists
+    if (!content) {
+        console.warn('Queue content element not found');
+        return;
+    }
 
     if (queue.length === 0) {
         content.innerHTML = `
@@ -372,6 +408,7 @@ function renderQueue() {
                 <p>Queue is empty</p>
             </div>
         `;
+        updateQueueUI();
         return;
     }
 
@@ -530,17 +567,17 @@ async function downloadSingle(videoId) {
         await apiCall('/api/download', 'POST', [videoId]);
         showToast('Download started', 'success');
         
-        // Poll for updates
+        // Poll for updates every second
         const interval = setInterval(async () => {
             await loadStatus();
-            await loadQueue();
+            await loadQueue(); // This calls renderQueue() internally
             
             const stillInQueue = queue.some(v => v.video_id === videoId);
             if (!stillInQueue) {
                 clearInterval(interval);
                 showToast('Download complete!', 'success');
             }
-        }, 2000);
+        }, 1000); // Poll every second
     } catch (error) {
         showToast(error.message, 'error');
     }
@@ -582,23 +619,51 @@ async function clearQueue() {
 
 // Download Queue
 async function downloadQueue() {
+    // Prevent multiple simultaneous downloads
+    if (isDownloading) {
+        showToast('Download already in progress', 'error');
+        return;
+    }
+    
     try {
+        isDownloading = true;
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn) {
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = 'Downloading...';
+        }
+        
         const data = await apiCall('/api/download', 'POST');
         showToast(data.message, 'success');
-        showDownloadProgress();
 
-        // Poll for updates
+        // Poll for updates every second to show progress
         const interval = setInterval(async () => {
+            console.log('Polling - Queue length:', queue.length);
             await loadStatus();
-            await loadQueue();
-
+            await loadQueue(); // This calls renderQueue() internally
+            
             if (queue.length === 0) {
+                console.log('Downloads complete - stopping poll');
                 clearInterval(interval);
-                hideDownloadProgress();
+                isDownloading = false;
                 showToast('All downloads complete!', 'success');
+                
+                if (downloadBtn) {
+                    downloadBtn.textContent = 'Download All';
+                    downloadBtn.disabled = true;
+                }
+                
+                const clearBtn = document.getElementById('clear-btn');
+                if (clearBtn) clearBtn.disabled = true;
             }
-        }, 2000);
+        }, 1000); // Poll every second for smoother updates
     } catch (error) {
+        isDownloading = false;
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn) {
+            downloadBtn.textContent = 'Download All';
+            downloadBtn.disabled = queue.length === 0;
+        }
         showToast(error.message, 'error');
     }
 }
