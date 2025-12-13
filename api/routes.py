@@ -244,10 +244,10 @@ def download_task(video_ids: list[str] | None = None):
     # Download each video individually and update queue immediately
     for video_info in library:
         file_path = downloader.download_audio(video_info)
-        
+
         # Always remove from queue after attempting download
         storage.remove_from_library(video_info['video_id'])
-        
+
         # Only add to downloaded history if successful
         if file_path:
             result = {
