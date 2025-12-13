@@ -100,7 +100,11 @@ function updateQueueUI() {
 // Settings Modal
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
-    modal.classList.toggle('hidden');
+    if (modal) {
+        modal.classList.toggle('hidden');
+    } else {
+        console.error('Settings modal not found');
+    }
 }
 
 // Close modal when clicking outside
@@ -538,11 +542,7 @@ async function downloadQueue() {
     }
 }
 
-// Settings
-function toggleSettings() {
-    const panel = document.getElementById('settings-panel');
-    panel.classList.toggle('hidden');
-}
+// Settings - removed duplicate, using modal version above
 
 async function saveSettings() {
     const audioQuality = document.getElementById('audio-quality').value;
