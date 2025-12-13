@@ -245,7 +245,10 @@ def download_task(video_ids: list[str] | None = None):
     for video_info in library:
         file_path = downloader.download_audio(video_info)
         
-        # Update storage immediately after each download
+        # Always remove from queue after attempting download
+        storage.remove_from_library(video_info['video_id'])
+        
+        # Only add to downloaded history if successful
         if file_path:
             result = {
                 **video_info,
@@ -253,8 +256,6 @@ def download_task(video_ids: list[str] | None = None):
                 'file_path': file_path
             }
             storage.add_to_downloaded(result)
-            storage.remove_from_library(video_info['video_id'])
-        # If download fails, leave it in queue
 
 
 @router.post("/api/download")

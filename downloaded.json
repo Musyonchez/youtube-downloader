@@ -6950,5 +6950,49 @@
     "success": true,
     "file_path": "downloads/Sauti Sol - SAUTI SOL - SURA YAKO (OFFICIAL MUSIC VIDEO) SMS [Skiza 1063395] to 811.mp3",
     "downloaded_at": "2025-12-13 20:17:37"
+  },
+  {
+    "video_id": "pLs4Tex0U1U",
+    "title": "Sauti Sol - Unconditionally Bae ft Alikiba (Official Music Video)",
+    "channel": "Sauti Sol",
+    "duration": "07:24",
+    "url": "https://www.youtube.com/watch?v=pLs4Tex0U1U",
+    "thumbnail": "https://img.youtube.com/vi/pLs4Tex0U1U/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Sauti Sol - Sauti Sol - Unconditionally Bae ft Alikiba (Official Music Video).mp3",
+    "downloaded_at": "2025-12-13 20:24:19"
+  },
+  {
+    "video_id": "ZmDBbnmKpqQ",
+    "title": "Olivia Rodrigo - drivers license (Official Video)",
+    "channel": "Olivia Rodrigo",
+    "duration": "04:07",
+    "url": "https://www.youtube.com/watch?v=ZmDBbnmKpqQ",
+    "thumbnail": "https://img.youtube.com/vi/ZmDBbnmKpqQ/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Olivia Rodrigo - Olivia Rodrigo - drivers license (Official Video).mp3",
+    "downloaded_at": "2025-12-13 20:24:31"
+  },
+  {
+    "video_id": "RlPNh_PBZb4",
+    "title": "Olivia Rodrigo - vampire (Official Video)",
+    "channel": "Olivia Rodrigo",
+    "duration": "04:05",
+    "url": "https://www.youtube.com/watch?v=RlPNh_PBZb4",
+    "thumbnail": "https://img.youtube.com/vi/RlPNh_PBZb4/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Olivia Rodrigo - Olivia Rodrigo - vampire (Official Video).mp3",
+    "downloaded_at": "2025-12-13 20:24:44"
+  },
+  {
+    "video_id": "OGUy2UmRxJ0",
+    "title": "Olivia Rodrigo - brutal (Official Video)",
+    "channel": "Olivia Rodrigo",
+    "duration": "02:54",
+    "url": "https://www.youtube.com/watch?v=OGUy2UmRxJ0",
+    "thumbnail": "https://img.youtube.com/vi/OGUy2UmRxJ0/mqdefault.jpg",
+    "success": true,
+    "file_path": "downloads/Olivia Rodrigo - Olivia Rodrigo - brutal (Official Video).mp3",
+    "downloaded_at": "2025-12-13 23:08:03"
   }
 ]

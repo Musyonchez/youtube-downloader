@@ -7,6 +7,7 @@ let queue = [];
 let config = {};
 let queueCollapsed = false;
 let isDownloading = false;
+let currentlyDownloading = null; // Track which video is currently downloading
 
 // Pagination
 const ITEMS_PER_PAGE = 20;
@@ -516,6 +517,12 @@ function createQueueItem(video) {
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.dataset.videoId = video.video_id;
+    
+    // Check if this item is currently downloading
+    const isCurrentlyDownloading = currentlyDownloading === video.video_id;
+    if (isCurrentlyDownloading) {
+        item.classList.add('downloading');
+    }
 
     const title = document.createElement('div');
     title.className = 'queue-item-title';
@@ -524,6 +531,14 @@ function createQueueItem(video) {
     const channel = document.createElement('div');
     channel.className = 'queue-item-channel';
     channel.textContent = video.channel;
+    
+    // Add status indicator
+    const status = document.createElement('div');
+    status.className = isCurrentlyDownloading ? 'queue-item-status downloading' : 'queue-item-status pending';
+    status.innerHTML = `
+        <span class="status-icon"></span>
+        <span class="status-text">${isCurrentlyDownloading ? 'Downloading' : 'Pending'}</span>
+    `;
 
     const actions = document.createElement('div');
     actions.className = 'queue-item-actions';
@@ -532,17 +547,20 @@ function createQueueItem(video) {
     downloadBtn.className = 'btn-primary';
     downloadBtn.textContent = 'Download';
     downloadBtn.onclick = () => downloadSingle(video.video_id);
+    downloadBtn.disabled = isDownloading; // Disable if any download is in progress
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn-secondary';
     removeBtn.textContent = 'Remove';
     removeBtn.onclick = () => removeFromQueue(video.video_id);
+    removeBtn.disabled = isDownloading; // Disable if any download is in progress
 
     actions.appendChild(downloadBtn);
     actions.appendChild(removeBtn);
 
     item.appendChild(title);
     item.appendChild(channel);
+    item.appendChild(status);
     item.appendChild(actions);
 
     return item;
@@ -635,17 +653,31 @@ async function downloadQueue() {
         
         const data = await apiCall('/api/download', 'POST');
         showToast(data.message, 'success');
+        
+        // Set first item as currently downloading and re-render
+        if (queue.length > 0) {
+            currentlyDownloading = queue[0].video_id;
+            console.log('Starting download with:', queue[0].title);
+            renderQueue(); // Show initial downloading state
+        }
 
         // Poll for updates every second to show progress
         const interval = setInterval(async () => {
-            console.log('Polling - Queue length:', queue.length);
+            const previousLength = queue.length;
+            console.log('Polling - Queue length before:', previousLength);
+            
             await loadStatus();
             await loadQueue(); // This calls renderQueue() internally
             
+            console.log('Polling - Queue length after:', queue.length);
+            
+            // Update currently downloading based on queue state
             if (queue.length === 0) {
-                console.log('Downloads complete - stopping poll');
+                // Queue is empty - stop everything
+                console.log('Queue empty - stopping download');
                 clearInterval(interval);
                 isDownloading = false;
+                currentlyDownloading = null;
                 showToast('All downloads complete!', 'success');
                 
                 if (downloadBtn) {
@@ -655,15 +687,28 @@ async function downloadQueue() {
                 
                 const clearBtn = document.getElementById('clear-btn');
                 if (clearBtn) clearBtn.disabled = true;
+                
+                // Force re-render to clear any downloading states
+                renderQueue();
+            } else {
+                // Queue has items - first item is downloading
+                if (queue.length < previousLength) {
+                    // Item was removed, update to next one
+                    currentlyDownloading = queue[0].video_id;
+                    console.log('Now downloading:', queue[0].title);
+                    renderQueue(); // Re-render to show new downloading item
+                }
             }
         }, 1000); // Poll every second for smoother updates
     } catch (error) {
         isDownloading = false;
+        currentlyDownloading = null;
         const downloadBtn = document.getElementById('download-btn');
         if (downloadBtn) {
             downloadBtn.textContent = 'Download All';
             downloadBtn.disabled = queue.length === 0;
         }
+        renderQueue(); // Reset UI
         showToast(error.message, 'error');
     }
 }

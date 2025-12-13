@@ -590,10 +590,37 @@ body {
     padding: 12px;
     margin-bottom: 12px;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
 }
 
 .queue-item:hover {
     border-color: var(--accent);
+}
+
+.queue-item.downloading {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.queue-item.downloading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-1);
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
 }
 
 .queue-item-title {
@@ -610,6 +637,52 @@ body {
     font-size: 11px;
     color: var(--text-secondary);
     margin-bottom: 8px;
+}
+
+.queue-item-status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.queue-item-status .status-icon {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+}
+
+.queue-item-status.pending .status-icon {
+    background: var(--text-secondary);
+}
+
+.queue-item-status.downloading .status-icon {
+    background: var(--accent);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.queue-item-status.downloading .status-text::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% {
+        content: '';
+    }
+    40% {
+        content: '.';
+    }
+    60% {
+        content: '..';
+    }
+    80%, 100% {
+        content: '...';
+    }
 }
 
 .queue-item-actions {
