@@ -8,6 +8,7 @@ let config = {};
 let queueCollapsed = false;
 let isDownloading = false;
 let currentlyDownloading = null; // Track which video is currently downloading
+let currentView = 'grid'; // Track current view mode
 
 // Pagination
 const ITEMS_PER_PAGE = 20;
@@ -16,6 +17,7 @@ let currentPage = 1;
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    initView();
     await loadStatus();
     await loadQueue();
     await loadConfig();
@@ -58,6 +60,53 @@ function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
+}
+
+// View Management
+function toggleView(view) {
+    currentView = view;
+    localStorage.setItem('view', view);
+    
+    const grid = document.getElementById('results-grid');
+    const buttons = document.querySelectorAll('.view-btn');
+    
+    // Update grid class
+    if (view === 'compact') {
+        grid?.classList.add('compact');
+    } else {
+        grid?.classList.remove('compact');
+    }
+    
+    // Update button states
+    buttons.forEach(btn => {
+        if (btn.dataset.view === view) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function initView() {
+    const savedView = localStorage.getItem('view') || 'grid';
+    currentView = savedView;
+    
+    // Apply saved view
+    const grid = document.getElementById('results-grid');
+    const buttons = document.querySelectorAll('.view-btn');
+    
+    if (savedView === 'compact') {
+        grid?.classList.add('compact');
+    }
+    
+    // Update button states
+    buttons.forEach(btn => {
+        if (btn.dataset.view === savedView) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
 }
 
 // Mobile Menu Toggle
