@@ -5,6 +5,7 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 ## Features
 
 ### 🎨 Modern UI/UX
+
 - **Professional Landing Page**: SaaS-quality design with gradients and smooth animations
 - **Light/Dark Theme Toggle**: Seamless theme switching with localStorage persistence
 - **Split-Screen Layout**: 70% search results, 30% collapsible queue panel
@@ -13,11 +14,13 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 - **Responsive Design**: Perfect on desktop, tablet, and mobile
 
 ### 🔍 Three Search Modes
+
 - **Search by Name**: Find videos with visual grid results and thumbnails
 - **Single URL**: Paste a YouTube video URL for quick downloads
 - **Playlist**: Add entire playlists at once with preview
 
 ### 📥 Smart Queue Management
+
 - **Real-Time Progress**: Live download status with pulsing indicators
 - **Quick Add Buttons**: One-click add from search results
 - **Individual Downloads**: Download single items or entire queue
@@ -26,12 +29,14 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 - **Duplicate Prevention**: Won't download the same video twice
 
 ### 🎵 High-Quality Audio
+
 - **320kbps MP3** (configurable: 128/192/256/320 kbps)
 - **Automatic Metadata**: Artist, title, and album tags
 - **Clean Filenames**: "Artist - Title.mp3" format
-- **Download History**: Track all 6,200+ downloads in `downloaded.json`
+- **Download History**: Track all 655 downloads in `downloaded.json`
 
 ### ⚡ User Experience
+
 - **YouTube Preview**: Hover thumbnails to see play button, opens video in new tab
 - **Pagination**: Navigate large search results easily
 - **Keyboard Shortcuts**: Enter to search, ESC to close modals
@@ -41,36 +46,40 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 ## Installation
 
 1. **Clone or navigate to project**:
+
    ```bash
    cd ~/Code/youtube-downloader
    ```
 
 2. **Create virtual environment**:
+
    ```bash
    python -m venv venv
    source venv/bin/activate
    ```
 
 3. **Install dependencies**:
+
    ```bash
    # Production dependencies
    make install
-   
+
    # Or manually
    pip install -r requirements.txt
-   
+
    # Optional: Development tools (linting, type checking)
    make install-dev
    ```
 
 4. **Install FFmpeg** (required for audio conversion):
+
    ```bash
    # Arch Linux
    sudo pacman -S ffmpeg
-   
+
    # Ubuntu/Debian
    sudo apt install ffmpeg
-   
+
    # macOS
    brew install ffmpeg
    ```
@@ -89,6 +98,7 @@ python app.py
 ```
 
 The server will start and display:
+
 ```
 🎵 YouTube MP3 Downloader
 ==========================
@@ -106,11 +116,13 @@ The server will start and display:
 ### Using the Web Interface
 
 #### Landing Page
+
 - Visit `http://localhost:8000` for the beautiful landing page
 - Choose your search mode: **Name**, **Playlist**, or **URL**
 - Toggle light/dark theme with the theme button
 
 #### Search Modes
+
 1. **Search by Name** (`/app/name`):
    - Enter keywords (e.g., "Ed Sheeran Perfect")
    - Browse visual grid with thumbnails
@@ -128,6 +140,7 @@ The server will start and display:
    - Add to queue
 
 #### Queue Management
+
 - **View Queue**: Toggle panel with X button or floating shelf icon
 - **Status Indicators**:
   - Gray dot = Pending
@@ -139,6 +152,7 @@ The server will start and display:
   - Real-time progress updates
 
 #### Settings
+
 - Click ⚙️ icon in navbar
 - **Audio Quality**: 128/192/256/320 kbps
 - **Download Directory**: Custom path
@@ -173,7 +187,7 @@ youtube-downloader/
 ├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8)
 ├── config.json              # User settings (quality, directory)
 ├── library.json             # Download queue (current)
-├── downloaded.json          # Download history (6,200+ tracks)
+├── downloaded.json          # Download history (655 tracks)
 └── downloads/               # MP3 output directory
 ```
 
@@ -197,6 +211,7 @@ The web app exposes a REST API:
 ## Configuration
 
 Default settings in `config.json`:
+
 ```json
 {
   "audio_quality": "320",
@@ -244,6 +259,7 @@ All commands automatically use the virtual environment.
 ## Use Cases
 
 ### Scenario 1: Browsing from Phone
+
 1. Lying in bed scrolling through music
 2. Open web app on phone (`http://<pc-ip>:8000`)
 3. Search and add songs to queue with one tap
@@ -251,6 +267,7 @@ All commands automatically use the virtual environment.
 5. Wake up with music ready in your library!
 
 ### Scenario 2: Building a Playlist
+
 1. Find a YouTube playlist you like
 2. Switch to Playlist mode
 3. Paste URL - see all 50+ videos with thumbnails
@@ -259,6 +276,7 @@ All commands automatically use the virtual environment.
 6. Download entire queue with one click
 
 ### Scenario 3: Quick Single Download
+
 1. Hear a song you like on YouTube
 2. Copy URL on any device
 3. Open web app, paste in URL mode
@@ -266,6 +284,7 @@ All commands automatically use the virtual environment.
 5. High-quality MP3 ready in seconds!
 
 ### Scenario 4: Theme Preference
+
 1. Prefer light mode? Toggle theme button
 2. Preference saves automatically
 3. Works across all pages (landing + app)
@@ -285,20 +304,24 @@ All commands automatically use the virtual environment.
 ## Troubleshooting
 
 **Server won't start**
+
 - Make sure venv is activated: `source venv/bin/activate`
 - Install dependencies: `pip install -r requirements.txt`
 
 **Can't access from phone**
+
 - Check your PC's firewall
 - Make sure phone is on same WiFi network
 - Use correct IP address (run `hostname -I`)
 
 **Thumbnails not loading**
+
 - Check internet connection
 - YouTube may be throttling requests
 - Try again in a few minutes
 
 **Downloads failing**
+
 - Make sure FFmpeg is installed: `sudo pacman -S ffmpeg`
 - Check download directory permissions
 - Ensure enough disk space
@@ -328,6 +351,7 @@ WantedBy=multi-user.target
 ```
 
 Enable and start:
+
 ```bash
 sudo systemctl enable youtube-downloader
 sudo systemctl start youtube-downloader
@@ -340,23 +364,27 @@ This tool is for personal use only. Downloading copyrighted content without perm
 ## Tech Stack
 
 ### Backend
+
 - **FastAPI**: Modern Python web framework with async support
 - **yt-dlp**: YouTube downloading and metadata extraction
 - **mutagen**: MP3 tagging (artist, title, album)
 - **rich**: Beautiful terminal progress bars
 
 ### Frontend
+
 - **Vanilla JavaScript**: No frameworks, pure ES6+
 - **Modern CSS**: CSS Grid, Flexbox, custom properties
 - **Responsive Design**: Mobile-first approach
 - **localStorage**: Theme and view preference persistence
 
 ### Storage
+
 - **JSON Files**: Git-friendly, human-readable
 - **No Database**: Simple file-based storage
 - **Download History**: Track 6,000+ songs efficiently
 
 ### Features
+
 - **WebSockets**: Real-time progress updates
 - **Page Visibility API**: Smart polling when tab is active
 - **Skeleton Loaders**: Shimmer effects during loading
@@ -369,17 +397,20 @@ Free to use for personal projects.
 ## Screenshots
 
 ### Landing Page
+
 - Modern gradient hero section
 - Three search mode options
 - Light/dark theme toggle
 
 ### App Interface
+
 - 70/30 split-screen layout
 - Search results with thumbnails
 - Collapsible queue panel
 - Real-time download progress
 
 ### Mobile View
+
 - Full-screen queue overlay
 - Responsive grid layout
 - Touch-friendly controls
@@ -389,6 +420,7 @@ Free to use for personal projects.
 ## Changelog
 
 ### v2.0.0 (December 2025)
+
 - ✨ Complete UI redesign with SaaS-quality landing page
 - ✨ Split-screen layout (70% results, 30% queue)
 - ✨ Light/dark theme toggle with persistence
@@ -404,6 +436,7 @@ Free to use for personal projects.
 - 🔧 Enhanced empty states with SVG icons
 
 ### v1.0.0 (Previous)
+
 - Basic web interface
 - Search and download functionality
 - Queue management
@@ -413,4 +446,4 @@ Free to use for personal projects.
 
 Made with ❤️ for music lovers who want to build their own library
 
-**6,211 songs downloaded and counting!** 🎵
+**655 songs downloaded and counting!** 🎵
