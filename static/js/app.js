@@ -176,6 +176,51 @@ async function loadConfig() {
     }
 }
 
+// Create skeleton loader card
+function createSkeletonCard() {
+    const card = document.createElement('div');
+    card.className = 'skeleton-card';
+    
+    const thumbnail = document.createElement('div');
+    thumbnail.className = 'skeleton-thumbnail';
+    
+    const info = document.createElement('div');
+    info.className = 'skeleton-info';
+    
+    const title1 = document.createElement('div');
+    title1.className = 'skeleton-title';
+    
+    const title2 = document.createElement('div');
+    title2.className = 'skeleton-title';
+    
+    const channel = document.createElement('div');
+    channel.className = 'skeleton-channel';
+    
+    const button = document.createElement('div');
+    button.className = 'skeleton-button';
+    
+    info.appendChild(title1);
+    info.appendChild(title2);
+    info.appendChild(channel);
+    info.appendChild(button);
+    
+    card.appendChild(thumbnail);
+    card.appendChild(info);
+    
+    return card;
+}
+
+// Show skeleton loaders
+function showSkeletonLoaders(count = 12) {
+    const grid = document.getElementById('results-grid');
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < count; i++) {
+        const skeleton = createSkeletonCard();
+        grid.appendChild(skeleton);
+    }
+}
+
 // Loading state
 function setSearchLoading(isLoading) {
     const btn = document.getElementById('search-btn');
@@ -188,6 +233,9 @@ function setSearchLoading(isLoading) {
         input.disabled = true;
         btnText.classList.add('hidden');
         spinner.classList.remove('hidden');
+        
+        // Show skeleton loaders
+        showSkeletonLoaders();
     } else {
         btn.disabled = false;
         input.disabled = false;
