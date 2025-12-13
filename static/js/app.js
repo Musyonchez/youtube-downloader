@@ -371,6 +371,19 @@ function createVideoCard(video) {
     thumbnailContainer.appendChild(thumbnail);
     thumbnailContainer.appendChild(durationBadge);
 
+    // YouTube preview button
+    const youtubeBtn = document.createElement('a');
+    youtubeBtn.className = 'youtube-preview-btn';
+    youtubeBtn.href = video.url;
+    youtubeBtn.target = '_blank';
+    youtubeBtn.rel = 'noopener noreferrer';
+    youtubeBtn.title = 'Preview on YouTube';
+    youtubeBtn.innerHTML = '▶';
+    youtubeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent card click when clicking preview
+    };
+    thumbnailContainer.appendChild(youtubeBtn);
+
     // Status badge
     if (video.status && video.status !== 'new') {
         const statusBadge = document.createElement('div');
