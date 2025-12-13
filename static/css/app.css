@@ -201,7 +201,7 @@ body {
     transition: color 0.2s;
 }
 
-/* Main App Container - 80/20 Split */
+/* Main App Container - 70/30 Split */
 .app-container {
     display: flex;
     margin-top: 69px;
@@ -210,14 +210,14 @@ body {
 }
 
 .search-area {
-    flex: 0 0 80%;
+    flex: 0 0 70%;
     padding: 40px;
     overflow-y: auto;
     height: 100%;
 }
 
 .queue-panel {
-    flex: 0 0 20%;
+    flex: 0 0 30%;
     background: var(--bg-secondary);
     border-left: 1px solid var(--border);
     display: flex;
@@ -834,8 +834,27 @@ body {
         flex: 1;
     }
     
+    /* Queue panel becomes full-screen overlay on mobile */
     .queue-panel {
-        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: 150;
+        border-left: none;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .queue-panel.collapsed {
+        transform: translateX(100%);
+    }
+    
+    .queue-panel:not(.collapsed) {
+        transform: translateX(0);
     }
     
     .queue-float-btn {
@@ -855,5 +874,10 @@ body {
     .results-grid {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 16px;
+    }
+    
+    /* Queue header spacing on mobile */
+    .queue-panel .queue-header {
+        padding-top: 80px; /* Account for mobile navbar */
     }
 }
