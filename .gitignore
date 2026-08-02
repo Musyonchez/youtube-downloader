@@ -1,10 +1,14 @@
-# Download folder (keep tracked songs in downloads.db instead)
+# Download folder (actual MP3 files -- runtime output, not source)
 downloads/
 
-# SQLite WAL-mode auxiliary files (transient, not the actual data)
-*.db-wal
-*.db-shm
-*.db-journal
+# Runtime data: config + library/history DB. SQLite is binary, so tracking
+# it in git (like downloaded.json used to be) would mean an opaque,
+# undiffable commit on every single download. Back it up separately
+# (filesystem backup / the Docker volume) instead.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
 
 # Hold folders with music files
 hold/hold1/

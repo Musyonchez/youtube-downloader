@@ -28,9 +28,9 @@ This builds on [01-audit.md](01-audit.md) / [02-fixes.md](02-fixes.md), which ar
 - [x] **Dockerfile.** Added a `Dockerfile` (+ `.dockerignore`) so the app can run reproducibly without manually managing a venv/FFmpeg install — useful given the README's own "Auto-Start on Boot" section already treats this as a long-running home-server service.
 - [x] **docker-compose.yml.** Added with `downloads/`, `config.json`, and `downloads.db` mounted from the host so the library/settings persist across container rebuilds -- the obvious default for this app's data files, documented in the README's new Docker section.
 
-## Note on git-tracking downloads.db
+## Resolved: git-tracking downloads.db
 
-`downloaded.json` was previously tracked in git (the old `.gitignore` comment said as much: "keep tracked songs in downloaded.json instead"), which gave a free, human-readable backup of download history in the repo's commit log. `downloads.db` is now tracked the same way for parity -- but SQLite is a binary format, so every future download will produce an opaque, undiffable commit instead of a readable JSON diff, and the repo will grow by a full ~300KB+ (and growing) binary blob's worth per commit rather than a small text diff. If that tradeoff isn't wanted, add `downloads.db` to `.gitignore` and rely on the Docker volume / regular filesystem backups instead.
+`downloaded.json` was previously tracked in git (the old `.gitignore` comment said as much: "keep tracked songs in downloaded.json instead"), which gave a free, human-readable backup of download history in the repo's commit log. `downloads.db` is SQLite -- a binary format -- so it never actually got that same benefit: every download would just be an opaque, undiffable blob commit with no real audit trail, unlike the JSON it replaced. **Decision: `data/*.db` is gitignored.** Rely on the Docker volume or a regular filesystem backup for persistence instead of git.
 
 ## Explicitly not planned
 
