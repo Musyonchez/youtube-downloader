@@ -18,7 +18,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from utils import sanitize_filename
+from app.utils import sanitize_filename
 
 console = Console()
 logger = logging.getLogger(__name__)

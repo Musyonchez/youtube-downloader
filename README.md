@@ -94,7 +94,7 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 
 # Or manually
 source venv/bin/activate
-python app.py
+python -m app.main
 ```
 
 The server will start and display:
@@ -162,10 +162,21 @@ The server will start and display:
 
 ```
 youtube-downloader/
-├── app.py                    # FastAPI server & routes
-├── api/
-│   ├── __init__.py
-│   └── routes.py            # API endpoints
+├── app/                      # Python package -- run as `python -m app.main`
+│   ├── main.py               # FastAPI app instance, page routes, /ws
+│   ├── ws_manager.py         # WebSocket connection manager
+│   ├── utils.py              # Pure helpers (filenames, durations, URL parsing)
+│   ├── api/
+│   │   └── routes.py         # REST API endpoints
+│   ├── services/
+│   │   ├── search.py         # YouTube search with yt-dlp
+│   │   └── downloader.py     # Download logic & progress tracking
+│   └── storage/
+│       ├── db.py             # SQLite wrapper (library queue & history)
+│       └── storage.py        # Storage facade (config.json + db.py)
+├── data/                     # Runtime data (config + library/history db)
+│   ├── config.json           # User settings (quality, directory)
+│   └── downloads.db          # Download queue + history (SQLite)
 ├── static/
 │   ├── css/
 │   │   ├── landing.css      # Landing page styles
@@ -177,20 +188,15 @@ youtube-downloader/
 ├── templates/
 │   ├── index.html           # Landing page
 │   └── app.html             # Main app (3 search modes)
-├── utils.py                 # Storage & helper functions
-├── search.py                # YouTube search with yt-dlp
-├── downloader.py            # Download logic & progress tracking
 ├── scripts/                 # One-off personal utility scripts
 │   ├── download_temp.py
 │   └── rename_bible.py
+├── tests/                   # pytest suite
 ├── run.sh                   # Startup script
 ├── Makefile                 # Development commands
 ├── requirements.txt         # Production dependencies
-├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8)
-├── config.json              # User settings (quality, directory)
-├── db.py                    # SQLite storage for library queue & history
-├── downloads.db             # Download queue + history (SQLite)
-└── downloads/               # MP3 output directory
+├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8, pytest)
+└── downloads/                # MP3 output directory
 ```
 
 ## API Endpoints
@@ -212,7 +218,7 @@ The web app exposes a REST API:
 
 ## Configuration
 
-Default settings in `config.json`:
+Default settings in `data/config.json`:
 
 ```json
 {
@@ -269,7 +275,7 @@ All commands automatically use the virtual environment.
 docker compose up --build
 ```
 
-This builds the app with FFmpeg included and mounts `downloads/`, `config.json`, and `downloads.db` from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
+This builds the app with FFmpeg included and mounts `downloads/` and `data/` (containing `config.json` and `downloads.db`) from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
 
 ## Use Cases
 
@@ -358,7 +364,7 @@ After=network.target
 Type=simple
 User=musyonchez
 WorkingDirectory=/home/musyonchez/Code/youtube-downloader
-ExecStart=/home/musyonchez/Code/youtube-downloader/venv/bin/python app.py
+ExecStart=/home/musyonchez/Code/youtube-downloader/venv/bin/python -m app.main
 Restart=always
 
 [Install]

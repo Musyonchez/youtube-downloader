@@ -4,6 +4,7 @@ __pycache__/
 .git/
 .pytest_cache/
 downloads/
+data/
 temp/
 docs/
 tests/

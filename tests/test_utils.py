@@ -1,5 +1,5 @@
-"""Tests for utils.py's pure helper functions (no network required)."""
-from utils import extract_video_id, format_duration, sanitize_filename
+"""Tests for app/utils.py's pure helper functions (no network required)."""
+from app.utils import extract_video_id, format_duration, sanitize_filename
 
 
 def test_sanitize_filename_strips_invalid_chars():

@@ -4,7 +4,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./downloads:/app/downloads
-      - ./config.json:/app/config.json
-      - ./downloads.db:/app/downloads.db
+      - ./downloads:/srv/downloads
+      - ./data:/srv/data
     restart: unless-stopped

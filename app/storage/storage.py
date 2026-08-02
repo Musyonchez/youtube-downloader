@@ -1,4 +1,4 @@
-"""Storage: JSON for config, SQLite for the library queue and download history."""
+"""Storage facade: JSON for config, SQLite for the library queue and download history."""
 import json
 import os
 import threading
@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from db import Database
+from app.storage.db import Database
 
 
 class Storage:
@@ -17,8 +17,9 @@ class Storage:
 
     _lock = threading.Lock()
 
-    def __init__(self, base_dir: str = "."):
+    def __init__(self, base_dir: str = "data"):
         self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
         self.config_file = self.base_dir / "config.json"
         self.db = Database(str(self.base_dir / "downloads.db"))
 
@@ -121,53 +122,3 @@ class Storage:
             return 'queued'
         else:
             return 'new'
-
-
-def extract_video_id(url: str) -> str | None:
-    """Extract video ID from YouTube URL."""
-    import re
-
-    # Handle various YouTube URL formats
-    patterns = [
-        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
-        r'youtube\.com\/watch\?.*?v=([^&\n?#]+)',
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-
-    # If it's already just an ID
-    if re.match(r'^[a-zA-Z0-9_-]{11}$', url):
-        return url
-
-    return None
-
-
-def sanitize_filename(filename: str) -> str:
-    """Remove invalid characters from filename."""
-    import re
-    # Remove invalid filename characters
-    filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-    # Remove extra whitespace
-    filename = ' '.join(filename.split())
-    return filename
-
-
-def format_duration(seconds) -> str:
-    """Format duration in seconds to MM:SS or HH:MM:SS."""
-    if seconds is None or seconds == 0:
-        return "00:00"
-
-    # Convert to int to handle float values from yt-dlp
-    seconds = int(seconds)
-
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-
-    if hours > 0:
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-    else:
-        return f"{minutes:02d}:{secs:02d}"

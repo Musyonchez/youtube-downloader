@@ -1,7 +1,7 @@
-"""Tests for db.py's SQLite-backed library/downloaded storage."""
+"""Tests for app/storage/db.py's SQLite-backed library/downloaded storage."""
 import pytest
 
-from db import Database
+from app.storage.db import Database
 
 
 @pytest.fixture

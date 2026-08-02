@@ -38,5 +38,5 @@ echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
-# Run the app
-python app.py
+# Run the app (module form, since app/main.py uses absolute `app.*` imports)
+python -m app.main

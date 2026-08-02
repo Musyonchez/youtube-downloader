@@ -10,13 +10,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from db import Database  # noqa: E402
+from app.storage.db import Database  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def migrate():
-    db = Database(str(ROOT / "downloads.db"))
+    db = Database(str(ROOT / "data" / "downloads.db"))
 
     library_file = ROOT / "library.json"
     if library_file.exists():

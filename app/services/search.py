@@ -2,7 +2,7 @@
 import yt_dlp
 from rich.console import Console
 
-from utils import extract_video_id, format_duration
+from app.utils import extract_video_id, format_duration
 
 console = Console()
 

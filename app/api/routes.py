@@ -6,10 +6,10 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
-from downloader import YouTubeDownloader
-from search import YouTubeSearcher
-from utils import Storage
-from ws_manager import manager
+from app.services.downloader import YouTubeDownloader
+from app.services.search import YouTubeSearcher
+from app.storage.storage import Storage
+from app.ws_manager import manager
 
 logger = logging.getLogger(__name__)
 

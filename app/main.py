@@ -8,8 +8,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from api.routes import router
-from ws_manager import manager
+from app.api.routes import router
+from app.ws_manager import manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -41,9 +41,9 @@ templates = Jinja2Templates(directory="templates")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint broadcasting real-time download progress.
 
-    Download progress originates in downloader.py's yt-dlp progress hook,
-    which runs in a background-task worker thread; api/routes.py bridges
-    that into this connection manager via broadcast_threadsafe.
+    Download progress originates in services/downloader.py's yt-dlp progress
+    hook, which runs in a background-task worker thread; api/routes.py
+    bridges that into this connection manager via broadcast_threadsafe.
     """
     await manager.connect(websocket)
     try:
@@ -75,7 +75,15 @@ async def health_check():
 
 
 if __name__ == "__main__":
+    import sys
+
     import uvicorn
+
+    # Avoid UnicodeEncodeError when stdout isn't UTF-8 (e.g. redirected or
+    # backgrounded on Windows, where the console falls back to cp1252).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     print("🚀 Starting YouTube MP3 Downloader...")
     print("📱 Open http://localhost:8000 in your browser")
     print("🌐 Or access from phone: http://<your-pc-ip>:8000")
