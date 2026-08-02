@@ -1,5 +1,10 @@
-# Download folder (keep tracked songs in downloaded.json instead)
+# Download folder (keep tracked songs in downloads.db instead)
 downloads/
+
+# SQLite WAL-mode auxiliary files (transient, not the actual data)
+*.db-wal
+*.db-shm
+*.db-journal
 
 # Hold folders with music files
 hold/hold1/

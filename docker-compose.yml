@@ -6,6 +6,5 @@ services:
     volumes:
       - ./downloads:/app/downloads
       - ./config.json:/app/config.json
-      - ./library.json:/app/library.json
-      - ./downloaded.json:/app/downloaded.json
+      - ./downloads.db:/app/downloads.db
     restart: unless-stopped

@@ -45,19 +45,19 @@ check: syntax type-check lint test
 # Check Python syntax
 syntax:
 	@echo "🔍 Checking Python syntax..."
-	@$(PYTHON) -m py_compile app.py downloader.py search.py utils.py ws_manager.py api/__init__.py api/routes.py
+	@$(PYTHON) -m py_compile app.py downloader.py search.py utils.py ws_manager.py db.py api/__init__.py api/routes.py
 	@echo "✅ Syntax check passed"
 
 # Run type checking
 type-check:
 	@echo "🔍 Running type checks..."
-	@$(MYPY) app.py downloader.py search.py utils.py ws_manager.py api/ --ignore-missing-imports --no-strict-optional
+	@$(MYPY) app.py downloader.py search.py utils.py ws_manager.py db.py api/ --ignore-missing-imports --no-strict-optional
 
 # Run linting
 lint:
 	@echo "🔍 Running linting..."
 	@$(RUFF) check .
-	@$(FLAKE8) app.py downloader.py search.py utils.py ws_manager.py api/ --max-line-length=120 --ignore=E501,W503
+	@$(FLAKE8) app.py downloader.py search.py utils.py ws_manager.py db.py api/ --max-line-length=120 --ignore=E501,W503
 
 # Run the test suite
 test:

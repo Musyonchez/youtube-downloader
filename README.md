@@ -33,7 +33,7 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 - **320kbps MP3** (configurable: 128/192/256/320 kbps)
 - **Automatic Metadata**: Artist, title, and album tags
 - **Clean Filenames**: "Artist - Title.mp3" format
-- **Download History**: Track all 655 downloads in `downloaded.json`
+- **Download History**: Track all 655+ downloads in `downloads.db` (SQLite)
 
 ### ⚡ User Experience
 
@@ -187,8 +187,8 @@ youtube-downloader/
 ├── requirements.txt         # Production dependencies
 ├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8)
 ├── config.json              # User settings (quality, directory)
-├── library.json             # Download queue (current)
-├── downloaded.json          # Download history (655 tracks)
+├── db.py                    # SQLite storage for library queue & history
+├── downloads.db             # Download queue + history (SQLite)
 └── downloads/               # MP3 output directory
 ```
 
@@ -268,7 +268,7 @@ All commands automatically use the virtual environment.
 docker compose up --build
 ```
 
-This builds the app with FFmpeg included and mounts `downloads/`, `config.json`, `library.json`, and `downloaded.json` from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
+This builds the app with FFmpeg included and mounts `downloads/`, `config.json`, and `downloads.db` from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
 
 ## Use Cases
 

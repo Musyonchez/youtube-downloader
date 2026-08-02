@@ -56,12 +56,9 @@ class ConfigUpdate(BaseModel):
 @router.get("/api/status")
 async def get_status() -> StatusResponse:
     """Get current status (queue count, downloaded count)."""
-    library = storage.load_library()
-    downloaded = storage.load_downloaded()
-
     return StatusResponse(
-        library_count=len(library),
-        downloaded_count=len(downloaded)
+        library_count=storage.count_library(),
+        downloaded_count=storage.count_downloaded()
     )
 
 

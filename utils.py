@@ -1,4 +1,4 @@
-"""Utility functions for JSON storage, config management, and duplicate checking."""
+"""Storage: JSON for config, SQLite for the library queue and download history."""
 import json
 import os
 import threading
@@ -6,14 +6,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from db import Database
+
 
 class Storage:
-    """Handles all JSON file operations.
-
-    A single process-wide lock serializes every read-modify-write sequence
-    (e.g. add_to_library, remove_from_library) since the FastAPI background
-    download task and API request handlers run concurrently in the same
-    process and could otherwise interleave reads/writes and drop updates.
+    """Config lives in config.json (small, rarely written, no query needs).
+    Library queue and download history live in SQLite via db.Database --
+    see db.py for why.
     """
 
     _lock = threading.Lock()
@@ -21,20 +20,10 @@ class Storage:
     def __init__(self, base_dir: str = "."):
         self.base_dir = Path(base_dir)
         self.config_file = self.base_dir / "config.json"
-        self.library_file = self.base_dir / "library.json"
-        self.downloaded_file = self.base_dir / "downloaded.json"
+        self.db = Database(str(self.base_dir / "downloads.db"))
 
-        # Ensure files exist
-        self._ensure_files()
-
-    def _ensure_files(self):
-        """Create files if they don't exist."""
         if not self.config_file.exists():
             self.save_config(self.get_default_config())
-        if not self.library_file.exists():
-            self._write_json(self.library_file, [])
-        if not self.downloaded_file.exists():
-            self._write_json(self.downloaded_file, [])
 
     @staticmethod
     def get_default_config() -> dict:
@@ -52,7 +41,7 @@ class Storage:
             with open(file_path, encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
-            return [] if file_path != self.config_file else self.get_default_config()
+            return self.get_default_config()
 
     def _write_json(self, file_path: Path, data: Any):
         """Write data to JSON file atomically (write to temp file, then rename)."""
@@ -84,62 +73,45 @@ class Storage:
     # Library operations
     def load_library(self) -> list[dict]:
         """Load library (queue to download)."""
-        with self._lock:
-            return cast(list, self._read_json(self.library_file))
-
-    def save_library(self, library: list[dict]):
-        """Save library."""
-        with self._lock:
-            self._write_json(self.library_file, library)
+        return self.db.get_library()
 
     def add_to_library(self, item: dict):
         """Add item to library."""
-        with self._lock:
-            library = cast(list, self._read_json(self.library_file))
-            library.append(item)
-            self._write_json(self.library_file, library)
+        self.db.add_library_item(item, added_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     def remove_from_library(self, video_id: str):
         """Remove item from library by video ID."""
-        with self._lock:
-            library = cast(list, self._read_json(self.library_file))
-            library = [item for item in library if item['video_id'] != video_id]
-            self._write_json(self.library_file, library)
+        self.db.remove_library_item(video_id)
 
     def clear_library(self):
         """Clear entire library."""
-        with self._lock:
-            self._write_json(self.library_file, [])
+        self.db.clear_library()
+
+    def count_library(self) -> int:
+        """Number of items in the library queue."""
+        return self.db.count_library()
 
     # Downloaded operations
     def load_downloaded(self) -> list[dict]:
         """Load downloaded history."""
-        with self._lock:
-            return cast(list, self._read_json(self.downloaded_file))
+        return self.db.get_downloaded()
 
-    def save_downloaded(self, downloaded: list[dict]):
-        """Save downloaded history."""
-        with self._lock:
-            self._write_json(self.downloaded_file, downloaded)
+    def count_downloaded(self) -> int:
+        """Number of items in download history."""
+        return self.db.count_downloaded()
 
     def add_to_downloaded(self, item: dict):
         """Add item to downloaded history (permanent record)."""
-        item = {**item, 'downloaded_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-        with self._lock:
-            downloaded = cast(list, self._read_json(self.downloaded_file))
-            downloaded.append(item)
-            self._write_json(self.downloaded_file, downloaded)
+        self.db.add_downloaded_item(item, downloaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     # Duplicate checking
     def is_downloaded(self, video_id: str) -> bool:
         """Check if video has been downloaded."""
-        downloaded = self.load_downloaded()
-        return any(item['video_id'] == video_id for item in downloaded)
+        return self.db.is_downloaded(video_id)
 
     def is_in_library(self, video_id: str) -> bool:
         """Check if video is in library queue."""
-        library = self.load_library()
-        return any(item['video_id'] == video_id for item in library)
+        return self.db.is_in_library(video_id)
 
     def get_item_status(self, video_id: str) -> str:
         """Get status of video: 'downloaded', 'queued', or 'new'."""

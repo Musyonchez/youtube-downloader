@@ -23,8 +23,8 @@ jobs:
 
       - name: Run checks (syntax, types, lint, tests)
         run: |
-          python -m py_compile app.py downloader.py search.py utils.py ws_manager.py api/__init__.py api/routes.py
-          mypy app.py downloader.py search.py utils.py ws_manager.py api/ --ignore-missing-imports --no-strict-optional
+          python -m py_compile app.py downloader.py search.py utils.py ws_manager.py db.py api/__init__.py api/routes.py
+          mypy app.py downloader.py search.py utils.py ws_manager.py db.py api/ --ignore-missing-imports --no-strict-optional
           ruff check .
-          flake8 app.py downloader.py search.py utils.py ws_manager.py api/ --max-line-length=120 --ignore=E501,W503
+          flake8 app.py downloader.py search.py utils.py ws_manager.py db.py api/ --max-line-length=120 --ignore=E501,W503
           pytest tests/
