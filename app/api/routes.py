@@ -23,7 +23,7 @@ AudioQuality = Literal["128", "192", "256", "320"]
 # Request/Response models
 class SearchRequest(BaseModel):
     query: str
-    limit: int = Field(default=15, ge=1, le=50)
+    limit: int = Field(default=15, ge=1, le=100)
 
 
 class URLRequest(BaseModel):
