@@ -1,12 +1,22 @@
 """Utility functions for JSON storage, config management, and duplicate checking."""
 import json
+import os
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
 
 class Storage:
-    """Handles all JSON file operations."""
+    """Handles all JSON file operations.
+
+    A single process-wide lock serializes every read-modify-write sequence
+    (e.g. add_to_library, remove_from_library) since the FastAPI background
+    download task and API request handlers run concurrently in the same
+    process and could otherwise interleave reads/writes and drop updates.
+    """
+
+    _lock = threading.Lock()
 
     def __init__(self, base_dir: str = "."):
         self.base_dir = Path(base_dir)
@@ -45,67 +55,80 @@ class Storage:
             return [] if file_path != self.config_file else self.get_default_config()
 
     def _write_json(self, file_path: Path, data: Any):
-        """Write data to JSON file."""
-        with open(file_path, 'w', encoding='utf-8') as f:
+        """Write data to JSON file atomically (write to temp file, then rename)."""
+        tmp_path = file_path.with_suffix(f'{file_path.suffix}.tmp')
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, file_path)
 
     # Config operations
     def load_config(self) -> dict:
         """Load configuration."""
-        return cast(dict, self._read_json(self.config_file))
+        with self._lock:
+            return cast(dict, self._read_json(self.config_file))
 
     def save_config(self, config: dict):
         """Save configuration."""
         config['last_updated'] = datetime.now().strftime("%Y-%m-%d")
-        self._write_json(self.config_file, config)
+        with self._lock:
+            self._write_json(self.config_file, config)
 
     def update_config(self, **kwargs):
         """Update specific config values."""
-        config = self.load_config()
-        config.update(kwargs)
-        self.save_config(config)
+        with self._lock:
+            config = cast(dict, self._read_json(self.config_file))
+            config.update(kwargs)
+            config['last_updated'] = datetime.now().strftime("%Y-%m-%d")
+            self._write_json(self.config_file, config)
 
     # Library operations
     def load_library(self) -> list[dict]:
         """Load library (queue to download)."""
-        return cast(list, self._read_json(self.library_file))
+        with self._lock:
+            return cast(list, self._read_json(self.library_file))
 
     def save_library(self, library: list[dict]):
         """Save library."""
-        self._write_json(self.library_file, library)
+        with self._lock:
+            self._write_json(self.library_file, library)
 
     def add_to_library(self, item: dict):
         """Add item to library."""
-        library = self.load_library()
-        library.append(item)
-        self.save_library(library)
+        with self._lock:
+            library = cast(list, self._read_json(self.library_file))
+            library.append(item)
+            self._write_json(self.library_file, library)
 
     def remove_from_library(self, video_id: str):
         """Remove item from library by video ID."""
-        library = self.load_library()
-        library = [item for item in library if item['video_id'] != video_id]
-        self.save_library(library)
+        with self._lock:
+            library = cast(list, self._read_json(self.library_file))
+            library = [item for item in library if item['video_id'] != video_id]
+            self._write_json(self.library_file, library)
 
     def clear_library(self):
         """Clear entire library."""
-        self.save_library([])
+        with self._lock:
+            self._write_json(self.library_file, [])
 
     # Downloaded operations
     def load_downloaded(self) -> list[dict]:
         """Load downloaded history."""
-        return cast(list, self._read_json(self.downloaded_file))
+        with self._lock:
+            return cast(list, self._read_json(self.downloaded_file))
 
     def save_downloaded(self, downloaded: list[dict]):
         """Save downloaded history."""
-        self._write_json(self.downloaded_file, downloaded)
+        with self._lock:
+            self._write_json(self.downloaded_file, downloaded)
 
     def add_to_downloaded(self, item: dict):
         """Add item to downloaded history (permanent record)."""
-        downloaded = self.load_downloaded()
-        # Add download timestamp
-        item['downloaded_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        downloaded.append(item)
-        self.save_downloaded(downloaded)
+        item = {**item, 'downloaded_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        with self._lock:
+            downloaded = cast(list, self._read_json(self.downloaded_file))
+            downloaded.append(item)
+            self._write_json(self.downloaded_file, downloaded)
 
     # Duplicate checking
     def is_downloaded(self, video_id: str) -> bool:
