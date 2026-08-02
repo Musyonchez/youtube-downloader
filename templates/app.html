@@ -222,6 +222,17 @@
         // Pass the search mode to JavaScript
         window.SEARCH_MODE = '{{ mode }}';
     </script>
-    <script src="/static/js/app.js"></script>
+    <!-- Plain scripts sharing global scope (no bundler/module system by
+         design -- see docs/03-full-improvement-plan.md). state.js must load
+         first since the others reference its variables; main.js must load
+         last since its DOMContentLoaded handler calls functions from all
+         the others. -->
+    <script src="/static/js/state.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/search.js"></script>
+    <script src="/static/js/queue.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/main.js"></script>
 </body>
 </html>

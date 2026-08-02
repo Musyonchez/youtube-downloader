@@ -172,7 +172,8 @@ youtube-downloader/
 │   │   └── app.css          # App split-screen layout
 │   └── js/
 │       ├── landing.js       # Landing page interactions
-│       └── app.js           # App logic (search, queue, downloads)
+│       └── (app logic, split into state.js, api.js, ui.js,
+│            search.js, queue.js, websocket.js, main.js)
 ├── templates/
 │   ├── index.html           # Landing page
 │   └── app.html             # Main app (3 search modes)
