@@ -147,7 +147,14 @@ body {
     font-size: 18px;
 }
 
-.view-toggle {
+.stats-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.view-toggle,
+.filter-toggle {
     display: flex;
     gap: 8px;
     background: var(--bg-tertiary);
@@ -155,7 +162,8 @@ body {
     padding: 4px;
 }
 
-.view-btn {
+.view-btn,
+.filter-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
@@ -168,12 +176,20 @@ body {
     justify-content: center;
 }
 
-.view-btn:hover {
+.filter-btn {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.view-btn:hover,
+.filter-btn:hover {
     background: var(--border);
     color: var(--text-primary);
 }
 
-.view-btn.active {
+.view-btn.active,
+.filter-btn.active {
     background: var(--accent);
     color: white;
 }
@@ -1067,8 +1083,9 @@ body {
         gap: 16px;
         align-items: flex-start;
     }
-    
-    .view-toggle {
+
+    .stats-right {
+        flex-wrap: wrap;
         align-self: flex-end;
     }
     

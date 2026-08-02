@@ -45,6 +45,26 @@ function initView() {
     });
 }
 
+// Results Filter (All / Downloaded / Not Downloaded)
+function setResultsFilter(filter) {
+    resultsFilter = filter;
+    localStorage.setItem('resultsFilter', filter);
+    currentPage = 1; // Reset to first page when the filter changes
+    updateFilterButtons();
+    renderResults();
+}
+
+function initResultsFilter() {
+    resultsFilter = localStorage.getItem('resultsFilter') || 'all';
+    updateFilterButtons();
+}
+
+function updateFilterButtons() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === resultsFilter);
+    });
+}
+
 // Queue Toggle
 function toggleQueue() {
     const panel = document.getElementById('queuePanel');

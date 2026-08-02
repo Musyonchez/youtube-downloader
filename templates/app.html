@@ -83,22 +83,29 @@
                     <span class="stat">Queue: <strong id="queue-count">0</strong></span>
                     <span class="stat">Downloaded: <strong id="downloaded-count">0</strong></span>
                 </div>
-                <div class="view-toggle">
-                    <button class="view-btn active" data-view="grid" onclick="toggleView('grid')" aria-label="Grid view" title="Grid view">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
-                        </svg>
-                    </button>
-                    <button class="view-btn" data-view="compact" onclick="toggleView('compact')" aria-label="Compact view" title="Compact view">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"></line>
-                            <line x1="3" y1="12" x2="21" y2="12"></line>
-                            <line x1="3" y1="18" x2="21" y2="18"></line>
-                        </svg>
-                    </button>
+                <div class="stats-right">
+                    <div class="filter-toggle">
+                        <button class="filter-btn active" data-filter="all" onclick="setResultsFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="downloaded" onclick="setResultsFilter('downloaded')">Downloaded</button>
+                        <button class="filter-btn" data-filter="not-downloaded" onclick="setResultsFilter('not-downloaded')">Not Downloaded</button>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" onclick="toggleView('grid')" aria-label="Grid view" title="Grid view">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button class="view-btn" data-view="compact" onclick="toggleView('compact')" aria-label="Compact view" title="Compact view">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 

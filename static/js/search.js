@@ -116,6 +116,20 @@ async function searchByPlaylist(url) {
     showToast(`Found ${data.summary.total} videos (${data.summary.new} new)`, 'success');
 }
 
+// Apply the current results filter (All / Downloaded / Not Downloaded).
+// Persisted to localStorage by setResultsFilter() in ui.js; defaults to 'all'.
+const FILTER_LABELS = { all: 'All', downloaded: 'Downloaded', 'not-downloaded': 'Not Downloaded' };
+
+function getFilteredResults() {
+    if (resultsFilter === 'downloaded') {
+        return searchResults.filter(video => video.status === 'downloaded');
+    }
+    if (resultsFilter === 'not-downloaded') {
+        return searchResults.filter(video => video.status !== 'downloaded');
+    }
+    return searchResults;
+}
+
 // Render Results
 function renderResults() {
     const grid = document.getElementById('results-grid');
@@ -134,13 +148,29 @@ function renderResults() {
         return;
     }
 
+    const filteredResults = getFilteredResults();
+
+    if (filteredResults.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <h3>No Matches</h3>
+                <p>No videos match the "${FILTER_LABELS[resultsFilter]}" filter</p>
+            </div>
+        `;
+        return;
+    }
+
     grid.innerHTML = '';
 
     // Calculate pagination
-    const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, searchResults.length);
-    const pageResults = searchResults.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredResults.length);
+    const pageResults = filteredResults.slice(startIndex, endIndex);
 
     // Render current page videos
     pageResults.forEach(video => {
@@ -158,7 +188,7 @@ function renderResults() {
             </button>
             <span class="page-info">
                 Page ${currentPage} of ${totalPages}
-                (Showing ${startIndex + 1}-${endIndex} of ${searchResults.length})
+                (Showing ${startIndex + 1}-${endIndex} of ${filteredResults.length})
             </span>
             <button onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>
                 Next →
@@ -170,7 +200,7 @@ function renderResults() {
 
 // Change page
 function changePage(direction) {
-    const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(getFilteredResults().length / ITEMS_PER_PAGE);
     currentPage += direction;
     currentPage = Math.max(1, Math.min(currentPage, totalPages));
     renderResults();

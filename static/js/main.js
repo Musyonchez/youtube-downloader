@@ -2,6 +2,7 @@
 // (Theme init is handled by nav.js, shared across all pages.)
 document.addEventListener('DOMContentLoaded', async () => {
     initView();
+    initResultsFilter();
     await loadStatus();
     await loadQueue();
     await loadConfig();

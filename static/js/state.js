@@ -9,6 +9,7 @@ let queueCollapsed = false;
 let isDownloading = false;
 let currentlyDownloading = null; // Track which video is currently downloading
 let currentView = 'grid'; // Track current view mode
+let resultsFilter = 'all'; // 'all' | 'downloaded' | 'not-downloaded'
 
 // Pagination
 const ITEMS_PER_PAGE = 20;
