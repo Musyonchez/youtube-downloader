@@ -251,6 +251,10 @@ make lint
 # Run the test suite
 make test
 
+# Run browser smoke tests (Playwright, mocked search -- one-time setup:
+# cd tests/e2e && npm install && npx playwright install chromium)
+make e2e
+
 # Clean cache files
 make clean
 
@@ -266,8 +270,9 @@ All commands automatically use the virtual environment.
 - **Type Checking**: Uses mypy with type hints
 - **Linting**: Ruff + Flake8 for code quality
 - **Formatting**: Automatic code formatting with ruff
-- **Tests**: pytest suite for `utils.py`'s pure-logic helpers
-- **CI**: GitHub Actions runs the full check suite on every push/PR to `master` (see `.github/workflows/ci.yml`)
+- **Tests**: pytest suite covering the pure-logic helpers, SQLite storage layer, and API request validation
+- **Browser tests**: Playwright smoke tests (`tests/e2e/`) drive the real app in headless Chromium against a mocked search backend, catching frontend/backend contract bugs pytest can't see (see `docs/05-browser-verification.md`)
+- **CI**: GitHub Actions runs the full check suite plus the Playwright smoke tests on every push/PR to `master` (see `.github/workflows/ci.yml`)
 
 ### Running with Docker
 

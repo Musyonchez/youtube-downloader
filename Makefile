@@ -1,4 +1,4 @@
-.PHONY: help check lint format type-check syntax test install-dev install clean run
+.PHONY: help check lint format type-check syntax test e2e install-dev install clean run
 
 # Detect virtual environment (Windows venvs use Scripts/, POSIX uses bin/)
 VENV := venv
@@ -23,6 +23,7 @@ help:
 	@echo "  make type-check   - Run type checking with mypy"
 	@echo "  make syntax       - Check Python syntax"
 	@echo "  make test         - Run the test suite with pytest"
+	@echo "  make e2e          - Run browser smoke tests (Playwright, mocked search)"
 	@echo "  make install-dev  - Install development dependencies"
 	@echo "  make install      - Install production dependencies"
 	@echo "  make run          - Run the application"
@@ -63,6 +64,20 @@ lint:
 test:
 	@echo "🧪 Running tests..."
 	@$(PYTEST) tests/
+
+# Run browser smoke tests against a dev server with search mocked (no real
+# YouTube calls -- see tests/e2e/serve_for_e2e.py). Requires `npm install`
+# and `npx playwright install chromium` once in tests/e2e/ first.
+e2e:
+	@echo "🌐 Starting dev server (search mocked)..."
+	@$(PYTHON) tests/e2e/serve_for_e2e.py & echo $$! > /tmp/yt-downloader-e2e.pid
+	@timeout 30 bash -c 'until curl -sf http://127.0.0.1:8000/health >/dev/null; do sleep 1; done'
+	@echo "🎭 Running Playwright..."
+	@cd tests/e2e && npx playwright test; \
+		status=$$?; \
+		kill $$(cat /tmp/yt-downloader-e2e.pid) 2>/dev/null || true; \
+		rm -f /tmp/yt-downloader-e2e.pid; \
+		exit $$status
 
 # Format code
 format:

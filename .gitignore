@@ -30,6 +30,12 @@ venv/
 env/
 ENV/
 
+# E2E test tooling (tests/e2e/) -- keep package.json/package-lock.json,
+# playwright.config.js, and *.spec.js tracked; not node_modules/results.
+tests/e2e/node_modules/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
 # IDE
 .vscode/
 .idea/

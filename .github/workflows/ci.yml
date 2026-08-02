@@ -28,3 +28,36 @@ jobs:
           ruff check .
           flake8 app/ --max-line-length=120 --ignore=E501,W503
           pytest tests/
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Playwright + Chromium
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start app (search mocked -- see tests/e2e/serve_for_e2e.py, avoids hitting real YouTube from CI)
+        run: |
+          python tests/e2e/serve_for_e2e.py &
+          timeout 30 bash -c 'until curl -sf http://127.0.0.1:8000/health >/dev/null; do sleep 1; done'
+
+      - name: Run Playwright smoke tests
+        working-directory: tests/e2e
+        run: npx playwright test
