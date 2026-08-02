@@ -1,12 +1,6 @@
 """API routes for YouTube downloader."""
-import os
-import sys
-
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-
-# Add parent directory to path to import our modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from downloader import YouTubeDownloader
 from search import YouTubeSearcher

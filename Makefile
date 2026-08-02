@@ -1,12 +1,17 @@
 .PHONY: help check lint format type-check syntax install-dev install clean run
 
-# Detect virtual environment
+# Detect virtual environment (Windows venvs use Scripts/, POSIX uses bin/)
 VENV := venv
-PYTHON := $(VENV)/bin/python
-PIP := $(VENV)/bin/pip
-MYPY := $(VENV)/bin/mypy
-RUFF := $(VENV)/bin/ruff
-FLAKE8 := $(VENV)/bin/flake8
+ifeq ($(OS),Windows_NT)
+    VENV_BIN := $(VENV)/Scripts
+else
+    VENV_BIN := $(VENV)/bin
+endif
+PYTHON := $(VENV_BIN)/python
+PIP := $(VENV_BIN)/pip
+MYPY := $(VENV_BIN)/mypy
+RUFF := $(VENV_BIN)/ruff
+FLAKE8 := $(VENV_BIN)/flake8
 
 help:
 	@echo "YouTube Downloader - Available commands:"
@@ -44,13 +49,13 @@ syntax:
 # Run type checking
 type-check:
 	@echo "🔍 Running type checks..."
-	@$(MYPY) app.py downloader.py search.py utils.py api/ --ignore-missing-imports --no-strict-optional || true
+	@$(MYPY) app.py downloader.py search.py utils.py api/ --ignore-missing-imports --no-strict-optional
 
 # Run linting
 lint:
 	@echo "🔍 Running linting..."
-	@$(RUFF) check . || true
-	@$(FLAKE8) app.py downloader.py search.py utils.py api/ --max-line-length=120 --ignore=E501,W503 || true
+	@$(RUFF) check .
+	@$(FLAKE8) app.py downloader.py search.py utils.py api/ --max-line-length=120 --ignore=E501,W503
 
 # Format code
 format:

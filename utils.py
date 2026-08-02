@@ -2,7 +2,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 class Storage:
@@ -52,7 +52,7 @@ class Storage:
     # Config operations
     def load_config(self) -> dict:
         """Load configuration."""
-        return self._read_json(self.config_file)
+        return cast(dict, self._read_json(self.config_file))
 
     def save_config(self, config: dict):
         """Save configuration."""
@@ -68,7 +68,7 @@ class Storage:
     # Library operations
     def load_library(self) -> list[dict]:
         """Load library (queue to download)."""
-        return self._read_json(self.library_file)
+        return cast(list, self._read_json(self.library_file))
 
     def save_library(self, library: list[dict]):
         """Save library."""
@@ -93,7 +93,7 @@ class Storage:
     # Downloaded operations
     def load_downloaded(self) -> list[dict]:
         """Load downloaded history."""
-        return self._read_json(self.downloaded_file)
+        return cast(list, self._read_json(self.downloaded_file))
 
     def save_downloaded(self, downloaded: list[dict]):
         """Save downloaded history."""

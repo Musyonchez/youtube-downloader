@@ -6,7 +6,15 @@ from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3NoHeaderError
 from mutagen.mp3 import MP3
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TaskProgressColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 
 from utils import sanitize_filename
 
@@ -22,8 +30,8 @@ class YouTubeDownloader:
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
         # Progress tracking
-        self.progress = None
-        self.task_id = None
+        self.progress: Progress | None = None
+        self.task_id: TaskID | None = None
 
     def _progress_hook(self, d):
         """Progress callback for yt-dlp."""
