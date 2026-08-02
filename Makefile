@@ -1,4 +1,4 @@
-.PHONY: help check lint format type-check syntax install-dev install clean run
+.PHONY: help check lint format type-check syntax test install-dev install clean run
 
 # Detect virtual environment (Windows venvs use Scripts/, POSIX uses bin/)
 VENV := venv
@@ -12,15 +12,17 @@ PIP := $(VENV_BIN)/pip
 MYPY := $(VENV_BIN)/mypy
 RUFF := $(VENV_BIN)/ruff
 FLAKE8 := $(VENV_BIN)/flake8
+PYTEST := $(VENV_BIN)/pytest
 
 help:
 	@echo "YouTube Downloader - Available commands:"
 	@echo ""
-	@echo "  make check        - Run all checks (syntax, type checking, linting)"
+	@echo "  make check        - Run all checks (syntax, type checking, linting, tests)"
 	@echo "  make lint         - Run linting with ruff and flake8"
 	@echo "  make format       - Format code with ruff"
 	@echo "  make type-check   - Run type checking with mypy"
 	@echo "  make syntax       - Check Python syntax"
+	@echo "  make test         - Run the test suite with pytest"
 	@echo "  make install-dev  - Install development dependencies"
 	@echo "  make install      - Install production dependencies"
 	@echo "  make run          - Run the application"
@@ -36,7 +38,7 @@ install-dev: install
 	$(PIP) install -r requirements-dev.txt
 
 # Run all checks
-check: syntax type-check lint
+check: syntax type-check lint test
 	@echo ""
 	@echo "✅ All checks passed!"
 
@@ -56,6 +58,11 @@ lint:
 	@echo "🔍 Running linting..."
 	@$(RUFF) check .
 	@$(FLAKE8) app.py downloader.py search.py utils.py api/ --max-line-length=120 --ignore=E501,W503
+
+# Run the test suite
+test:
+	@echo "🧪 Running tests..."
+	@$(PYTEST) tests/
 
 # Format code
 format:
