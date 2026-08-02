@@ -22,8 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadQueue();
     await loadConfig();
     updateQueueUI();
-    setupWebSocket();
-    
+
     // Check screen size and auto-collapse queue on mobile
     if (window.innerWidth <= 968) {
         queueCollapsed = true;
@@ -806,22 +805,6 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 3000);
-}
-
-// WebSocket
-function setupWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        // Handle real-time updates here
-        console.log('WebSocket message:', data);
-    };
-
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
 }
 
 // Enter key for search
