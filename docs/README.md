@@ -8,3 +8,4 @@ Every doc gets a `01-`, `02-`, etc. prefix, except this `README.md` (which stays
 - [04-file-reorg.md](04-file-reorg.md) — restructured into an `app/` package + `data/` folder; before/after layout, rationale, and what had to change to make it work.
 - [05-browser-verification.md](05-browser-verification.md) — headless-browser verification of the live app; caught and fixed a real search-breaking regression, plus a process gap (no browser testing in CI) left for later.
 - [06-ui-review.md](06-ui-review.md) — full frontend review: navbar duplicated across pages (headline finding, unified into a shared partial), theme-flash/FOUC, dead links, and other polish.
+- [07-ffmpeg-conversion-bug.md](07-ffmpeg-conversion-bug.md) — downloaded files turned out to be raw WebM, not MP3: FFmpeg was never installed on this machine, and failed conversions left orphaned raw files with no extension. Fixed and installed FFmpeg.

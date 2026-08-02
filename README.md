@@ -82,7 +82,12 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 
    # macOS
    brew install ffmpeg
+
+   # Windows
+   winget install Gyan.FFmpeg
    ```
+
+   Without FFmpeg, downloads fail with a clear "FFmpeg not found" error rather than silently leaving a non-MP3 file behind (the raw pre-conversion download) under a filename that looks like the expected MP3.
 
 ## Usage
 

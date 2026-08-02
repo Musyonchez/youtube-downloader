@@ -1,5 +1,6 @@
 """YouTube downloader with progress tracking and metadata tagging."""
 import logging
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -68,14 +69,25 @@ class YouTubeDownloader:
 
     def download_audio(self, video_info: dict) -> str | None:
         """Download video as MP3 audio file."""
+        base_name = None
         try:
             url = video_info['url']
             title = video_info['title']
             channel = video_info['channel']
             self._current_video_id = video_info.get('video_id')
 
+            if shutil.which('ffmpeg') is None:
+                console.print(
+                    "[red]✗ FFmpeg not found on PATH -- required to convert downloads to MP3. "
+                    "Install it (e.g. `winget install Gyan.FFmpeg` on Windows, "
+                    "`sudo apt install ffmpeg` on Debian/Ubuntu) and restart the app.[/red]"
+                )
+                logger.error("FFmpeg not found; cannot download %s", title)
+                return None
+
             # Create filename: "Artist - Title.mp3"
-            filename = sanitize_filename(f"{channel} - {title}.mp3")
+            base_name = sanitize_filename(f"{channel} - {title}")
+            filename = f"{base_name}.mp3"
             output_path = self.download_dir / filename
 
             # Check if file already exists
@@ -93,7 +105,11 @@ class YouTubeDownloader:
                     'preferredcodec': 'mp3',
                     'preferredquality': self.audio_quality,
                 }],
-                'outtmpl': str(self.download_dir / sanitize_filename(f"{channel} - {title}")),
+                # %(ext)s is required: without it yt-dlp writes the raw
+                # download (webm/m4a/opus, before FFmpeg conversion) to this
+                # exact literal path with no extension at all -- which is
+                # exactly what was left behind if FFmpeg conversion failed.
+                'outtmpl': str(self.download_dir / base_name) + '.%(ext)s',
                 'progress_hooks': [self._progress_hook],
                 'quiet': True,
                 'no_warnings': True,
@@ -126,7 +142,20 @@ class YouTubeDownloader:
         except Exception as e:
             console.print(f"[red]✗ Error downloading {video_info['title']}: {str(e)}[/red]")
             logger.exception("Failed to download %s (%s)", video_info.get('title'), video_info.get('video_id'))
+            if base_name:
+                self._cleanup_partial_download(base_name)
             return None
+
+    def _cleanup_partial_download(self, base_name: str):
+        """Remove any raw/partial file yt-dlp wrote before a failure (e.g. the
+        FFmpeg conversion step failing) instead of leaving it behind under a
+        filename that looks like -- but isn't -- the expected MP3."""
+        for leftover in self.download_dir.glob(f"{base_name}.*"):
+            try:
+                leftover.unlink()
+                logger.info("Removed orphaned partial download: %s", leftover)
+            except OSError:
+                logger.warning("Could not remove orphaned partial download: %s", leftover)
 
     def _tag_mp3(self, file_path: Path, video_info: dict):
         """Add metadata tags to MP3 file."""
