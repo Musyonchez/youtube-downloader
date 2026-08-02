@@ -1,20 +1,29 @@
 """API routes for YouTube downloader."""
+import asyncio
+import logging
+from typing import Literal
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from downloader import YouTubeDownloader
 from search import YouTubeSearcher
 from utils import Storage
+from ws_manager import manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 storage = Storage()
 searcher = YouTubeSearcher()
 
+AudioQuality = Literal["128", "192", "256", "320"]
+
 
 # Request/Response models
 class SearchRequest(BaseModel):
     query: str
-    limit: int = 15
+    limit: int = Field(default=15, ge=1, le=50)
 
 
 class URLRequest(BaseModel):
@@ -33,6 +42,13 @@ class VideoItem(BaseModel):
 class StatusResponse(BaseModel):
     library_count: int
     downloaded_count: int
+
+
+class ConfigUpdate(BaseModel):
+    """Partial config update -- only fields that are set get applied."""
+    audio_quality: AudioQuality | None = None
+    format: Literal["mp3"] | None = None
+    download_dir: str | None = None
 
 
 # API Endpoints
@@ -211,15 +227,21 @@ async def get_config() -> dict:
 
 
 @router.post("/api/config")
-async def update_config(config: dict) -> dict:
-    """Update configuration."""
-    storage.update_config(**config)
+async def update_config(config: ConfigUpdate) -> dict:
+    """Update configuration. Only fields provided in the request are changed."""
+    updates = config.dict(exclude_unset=True, exclude_none=True)
+    storage.update_config(**updates)
     return {"message": "Configuration updated"}
 
 
 # Background task for downloading
-def download_task(video_ids: list[str] | None = None):
-    """Background task to download videos."""
+def download_task(video_ids: list[str] | None, loop: asyncio.AbstractEventLoop):
+    """Background task to download videos.
+
+    Runs in a threadpool worker (FastAPI's BackgroundTasks), so progress and
+    completion events are bridged onto the main event loop via `loop` to
+    reach WebSocket clients.
+    """
     library = storage.load_library()
 
     # Filter by video_ids if provided
@@ -230,19 +252,27 @@ def download_task(video_ids: list[str] | None = None):
         return
 
     config = storage.load_config()
+
+    def on_progress(video_id: str, percent: float):
+        manager.broadcast_threadsafe({"type": "progress", "video_id": video_id, "percent": percent}, loop)
+
     downloader = YouTubeDownloader(
         download_dir=config['download_dir'],
-        audio_quality=config['audio_quality']
+        audio_quality=config['audio_quality'],
+        progress_callback=on_progress,
     )
 
     # Download each video individually and update queue immediately
     for video_info in library:
-        file_path = downloader.download_audio(video_info)
+        try:
+            file_path = downloader.download_audio(video_info)
+        except Exception:
+            logger.exception("Unexpected error downloading %s", video_info.get('video_id'))
+            file_path = None
 
         # Always remove from queue after attempting download
         storage.remove_from_library(video_info['video_id'])
 
-        # Only add to downloaded history if successful
         if file_path:
             result = {
                 **video_info,
@@ -250,6 +280,14 @@ def download_task(video_ids: list[str] | None = None):
                 'file_path': file_path
             }
             storage.add_to_downloaded(result)
+            manager.broadcast_threadsafe(
+                {"type": "download_complete", "video_id": video_info['video_id'], "success": True}, loop
+            )
+        else:
+            logger.warning("Download failed for %s (%s)", video_info.get('title'), video_info.get('video_id'))
+            manager.broadcast_threadsafe(
+                {"type": "download_complete", "video_id": video_info['video_id'], "success": False}, loop
+            )
 
 
 @router.post("/api/download")
@@ -260,8 +298,10 @@ async def start_download(background_tasks: BackgroundTasks, video_ids: list[str]
     if not library:
         raise HTTPException(status_code=400, detail="Library is empty")
 
-    # Start download in background
-    background_tasks.add_task(download_task, video_ids)
+    # Start download in background, passing the current event loop so the
+    # worker thread can broadcast progress back to WebSocket clients.
+    loop = asyncio.get_running_loop()
+    background_tasks.add_task(download_task, video_ids, loop)
 
     count = len(video_ids) if video_ids else len(library)
 

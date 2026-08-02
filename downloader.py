@@ -1,4 +1,6 @@
 """YouTube downloader with progress tracking and metadata tagging."""
+import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import yt_dlp
@@ -19,36 +21,50 @@ from rich.progress import (
 from utils import sanitize_filename
 
 console = Console()
+logger = logging.getLogger(__name__)
+
+# Called with (video_id, percent) as each video downloads, e.g. to broadcast over a WebSocket.
+ProgressCallback = Callable[[str, float], None]
 
 
 class YouTubeDownloader:
     """Handles downloading YouTube videos as MP3 files."""
 
-    def __init__(self, download_dir: str = "./downloads", audio_quality: str = "320"):
+    def __init__(
+        self,
+        download_dir: str = "./downloads",
+        audio_quality: str = "320",
+        progress_callback: ProgressCallback | None = None,
+    ):
         self.download_dir = Path(download_dir)
         self.audio_quality = audio_quality
         self.download_dir.mkdir(parents=True, exist_ok=True)
+        self.progress_callback = progress_callback
 
         # Progress tracking
         self.progress: Progress | None = None
         self.task_id: TaskID | None = None
+        self._current_video_id: str | None = None
 
     def _progress_hook(self, d):
         """Progress callback for yt-dlp."""
-        if self.progress is None:
-            return
-
         if d['status'] == 'downloading':
-            # Update progress bar
             total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
             downloaded = d.get('downloaded_bytes', 0)
 
-            if total > 0 and self.task_id is not None:
-                self.progress.update(self.task_id, completed=downloaded, total=total)
+            if total > 0:
+                if self.task_id is not None and self.progress is not None:
+                    self.progress.update(self.task_id, completed=downloaded, total=total)
+
+                if self.progress_callback is not None and self._current_video_id is not None:
+                    self.progress_callback(self._current_video_id, round(downloaded / total * 100, 1))
 
         elif d['status'] == 'finished':
-            if self.task_id is not None:
+            if self.task_id is not None and self.progress is not None:
                 self.progress.update(self.task_id, completed=100, total=100)
+
+            if self.progress_callback is not None and self._current_video_id is not None:
+                self.progress_callback(self._current_video_id, 100.0)
 
     def download_audio(self, video_info: dict) -> str | None:
         """Download video as MP3 audio file."""
@@ -56,6 +72,7 @@ class YouTubeDownloader:
             url = video_info['url']
             title = video_info['title']
             channel = video_info['channel']
+            self._current_video_id = video_info.get('video_id')
 
             # Create filename: "Artist - Title.mp3"
             filename = sanitize_filename(f"{channel} - {title}.mp3")
@@ -108,6 +125,7 @@ class YouTubeDownloader:
 
         except Exception as e:
             console.print(f"[red]✗ Error downloading {video_info['title']}: {str(e)}[/red]")
+            logger.exception("Failed to download %s (%s)", video_info.get('title'), video_info.get('video_id'))
             return None
 
     def _tag_mp3(self, file_path: Path, video_info: dict):
