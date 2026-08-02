@@ -381,7 +381,7 @@ This tool is for personal use only. Downloading copyrighted content without perm
 
 - **JSON Files**: Git-friendly, human-readable
 - **No Database**: Simple file-based storage
-- **Download History**: Track 6,000+ songs efficiently
+- **Download History**: Track 655+ songs efficiently
 
 ### Features
 
