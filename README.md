@@ -89,11 +89,21 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 ### Quick Start
 
 ```bash
-# Using the startup script (recommended)
+# Using the startup script (recommended) -- Linux/macOS/Git Bash
 ./run.sh
 
 # Or manually
 source venv/bin/activate
+python -m app.main
+```
+
+On native Windows PowerShell (not Git Bash), use `run.ps1` instead:
+
+```powershell
+.\run.ps1
+
+# Or manually
+venv\Scripts\Activate.ps1
 python -m app.main
 ```
 
@@ -192,7 +202,8 @@ youtube-downloader/
 │   ├── download_temp.py
 │   └── rename_bible.py
 ├── tests/                   # pytest suite
-├── run.sh                   # Startup script
+├── run.sh                   # Startup script (Linux/macOS/Git Bash)
+├── run.ps1                  # Startup script (native Windows PowerShell)
 ├── Makefile                 # Development commands
 ├── requirements.txt         # Production dependencies
 ├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8, pytest)
