@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./config.json:/app/config.json
+      - ./library.json:/app/library.json
+      - ./downloaded.json:/app/downloaded.json
+    restart: unless-stopped

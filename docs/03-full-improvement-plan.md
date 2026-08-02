@@ -19,12 +19,14 @@ This builds on [01-audit.md](01-audit.md) / [02-fixes.md](02-fixes.md), which ar
 
 - [ ] **Split `app.js` into modules.** It's a single 800+ line file with everything as global functions/state (`api.js`, `search.js`, `queue.js`, `ui.js` would be the natural split). Not done in this pass — it's a large, UI-testing-heavy refactor better done as its own reviewed change rather than blind autonomous edits to a file with no test coverage.
 - [x] **Live progress in the UI.** Wired up to the new WebSocket broadcast above — queue items now show real download percentage instead of only a static "downloading" dot.
+- [x] **Fixed light-theme navbar bug.** `landing.js`'s scroll handler set an inline `navbar.style.background = 'rgba(10, 10, 15, ...)'` on scroll, which overrode `landing.css`'s `[data-theme="light"] .navbar` rule (inline styles beat any stylesheet selector) — so scrolling in light mode turned the navbar dark. Replaced with a `.scrolled` class toggle so the theme's own CSS controls the color; also dropped the now-unused `lastScroll` variable.
+- [x] **Removed dead progress-bar functions.** `app.js`'s `showDownloadProgress`/`hideDownloadProgress`/`updateProgress` referenced `#download-progress`/`#progress-fill`/`#progress-text` elements that don't exist anywhere in `app.html` and were never called — leftover from before the WebSocket-based per-item progress text landed above.
 
 ## Tooling / Deployment
 
 - [x] **CI workflow.** Added `.github/workflows/ci.yml` running the same checks as `make check` (syntax, mypy, ruff, flake8, pytest) directly on every push/PR to `master` — invoked as plain commands rather than via `make`, since the CI runner installs dependencies straight into the system Python rather than creating a `venv/`, which is what the Makefile's paths assume.
 - [x] **Dockerfile.** Added a `Dockerfile` (+ `.dockerignore`) so the app can run reproducibly without manually managing a venv/FFmpeg install — useful given the README's own "Auto-Start on Boot" section already treats this as a long-running home-server service.
-- [ ] **docker-compose with a persistent volume for `downloads/`.** Sketched but not added — depends on where the user actually wants the downloads volume mounted on their machine, which isn't something to guess at.
+- [x] **docker-compose.yml.** Added with `downloads/`, `config.json`, `library.json`, and `downloaded.json` mounted from the host so the library/settings persist across container rebuilds -- the obvious default for this app's data files, documented in the README's new Docker section.
 
 ## Explicitly not planned
 

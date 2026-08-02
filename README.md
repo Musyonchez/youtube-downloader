@@ -229,7 +229,7 @@ Settings can be changed through the web UI or by editing the file.
 ### Available Commands
 
 ```bash
-# Run all code quality checks
+# Run all code quality checks (syntax, types, lint, tests)
 make check
 
 # Format code with ruff
@@ -240,6 +240,9 @@ make type-check
 
 # Run linting
 make lint
+
+# Run the test suite
+make test
 
 # Clean cache files
 make clean
@@ -256,6 +259,16 @@ All commands automatically use the virtual environment.
 - **Type Checking**: Uses mypy with type hints
 - **Linting**: Ruff + Flake8 for code quality
 - **Formatting**: Automatic code formatting with ruff
+- **Tests**: pytest suite for `utils.py`'s pure-logic helpers
+- **CI**: GitHub Actions runs the full check suite on every push/PR to `master` (see `.github/workflows/ci.yml`)
+
+### Running with Docker
+
+```bash
+docker compose up --build
+```
+
+This builds the app with FFmpeg included and mounts `downloads/`, `config.json`, `library.json`, and `downloaded.json` from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
 
 ## Use Cases
 
