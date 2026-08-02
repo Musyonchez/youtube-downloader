@@ -781,22 +781,6 @@ async function saveSettings() {
     }
 }
 
-// Download Progress UI
-function showDownloadProgress() {
-    const progress = document.getElementById('download-progress');
-    progress.classList.remove('hidden');
-}
-
-function hideDownloadProgress() {
-    const progress = document.getElementById('download-progress');
-    progress.classList.add('hidden');
-}
-
-function updateProgress(percent, text) {
-    document.getElementById('progress-fill').style.width = `${percent}%`;
-    document.getElementById('progress-text').textContent = text;
-}
-
 // WebSocket -- live download progress, broadcast from downloader.py's yt-dlp
 // progress hook via api/routes.py. The queue list itself is still refreshed
 // via polling (loadQueue/loadStatus); this only fills in per-item percent.
