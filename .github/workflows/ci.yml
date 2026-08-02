@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run checks (syntax, types, lint, tests)
+        run: |
+          python -m py_compile app.py downloader.py search.py utils.py ws_manager.py api/__init__.py api/routes.py
+          mypy app.py downloader.py search.py utils.py ws_manager.py api/ --ignore-missing-imports --no-strict-optional
+          ruff check .
+          flake8 app.py downloader.py search.py utils.py ws_manager.py api/ --max-line-length=120 --ignore=E501,W503
+          pytest tests/
