@@ -5,68 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Convert YouTube videos to high-quality MP3 files. Fast, free, and easy to use. Access from any device on your network.">
     <title>YouTube MP3 Downloader - High Quality Audio Downloads</title>
+    {% include "partials/head_extras.html" %}
+    <link rel="stylesheet" href="/static/css/nav.css">
     <link rel="stylesheet" href="/static/css/landing.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-content">
-                <div class="logo">
-                    <span class="logo-text">YT Downloader</span>
-                </div>
-                <div class="nav-links">
-                    <a href="/app/name">Name</a>
-                    <a href="/app/playlist">Playlist</a>
-                    <a href="/app/url">URL</a>
-                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
-                </div>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="/app/name" onclick="toggleMobileMenu()">Name</a>
-        <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
-        <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-            <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-            <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-        </button>
-    </div>
+    {% include "partials/navbar.html" %}
 
     <!-- Hero Section -->
     <section class="hero">
@@ -392,24 +336,19 @@
                     <div class="footer-column">
                         <h4>Resources</h4>
                         <a href="#faq">FAQ</a>
-                        <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>
-                        <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a>
-                    </div>
-                    <div class="footer-column">
-                        <h4>Tech Stack</h4>
-                        <a href="#">Python</a>
-                        <a href="#">FastAPI</a>
-                        <a href="#">yt-dlp</a>
+                        <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener noreferrer">yt-dlp</a>
+                        <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer">FastAPI</a>
                     </div>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 YT Downloader. For personal use only.</p>
+                <p>&copy; {{ current_year() }} YT Downloader. For personal use only.</p>
                 <p class="footer-disclaimer">Respect copyright laws. Only download content you have the right to download.</p>
             </div>
         </div>
     </footer>
 
+    <script src="/static/js/nav.js"></script>
     <script src="/static/js/landing.js"></script>
 </body>
 </html>

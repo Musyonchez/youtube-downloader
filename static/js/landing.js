@@ -1,40 +1,5 @@
 // Landing Page JavaScript
-
-// Theme Management
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-}
-
-function updateThemeIcon(theme) {
-    const sunIcons = document.querySelectorAll('.sun-icon');
-    const moonIcons = document.querySelectorAll('.moon-icon');
-    
-    if (theme === 'light') {
-        sunIcons.forEach(icon => icon.style.display = 'none');
-        moonIcons.forEach(icon => icon.style.display = 'block');
-    } else {
-        sunIcons.forEach(icon => icon.style.display = 'block');
-        moonIcons.forEach(icon => icon.style.display = 'none');
-    }
-}
-
-// Initialize theme on page load
-(function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-})();
-
-// Mobile Menu Toggle
-function toggleMobileMenu() {
-    const menu = document.getElementById('mobileMenu');
-    menu.classList.toggle('active');
-}
+// Theme toggle and mobile menu live in nav.js (shared across all pages).
 
 // FAQ Toggle
 function toggleFaq(button) {
@@ -108,18 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
         observer.observe(el);
     });
-});
-
-// Close mobile menu when clicking outside
-document.addEventListener('click', (e) => {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-    
-    if (mobileMenu.classList.contains('active') && 
-        !mobileMenu.contains(e.target) && 
-        !mobileMenuBtn.contains(e.target)) {
-        mobileMenu.classList.remove('active');
-    }
 });
 
 // Prevent default for empty anchor links

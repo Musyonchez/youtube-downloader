@@ -1,33 +1,3 @@
-// Theme Management
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-}
-
-function updateThemeIcon(theme) {
-    const sunIcons = document.querySelectorAll('.sun-icon');
-    const moonIcons = document.querySelectorAll('.moon-icon');
-
-    if (theme === 'light') {
-        sunIcons.forEach(icon => icon.style.display = 'none');
-        moonIcons.forEach(icon => icon.style.display = 'block');
-    } else {
-        sunIcons.forEach(icon => icon.style.display = 'block');
-        moonIcons.forEach(icon => icon.style.display = 'none');
-    }
-}
-
-// Initialize theme on page load
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-}
-
 // View Management
 function toggleView(view) {
     currentView = view;
@@ -73,12 +43,6 @@ function initView() {
             btn.classList.remove('active');
         }
     });
-}
-
-// Mobile Menu Toggle
-function toggleMobileMenu() {
-    const menu = document.getElementById('mobileMenu');
-    menu.classList.toggle('active');
 }
 
 // Queue Toggle

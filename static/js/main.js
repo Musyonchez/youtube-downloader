@@ -1,6 +1,6 @@
 // Initialize -- loaded last so it can reference everything above.
+// (Theme init is handled by nav.js, shared across all pages.)
 document.addEventListener('DOMContentLoaded', async () => {
-    initTheme();
     initView();
     await loadStatus();
     await loadQueue();

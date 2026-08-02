@@ -1,0 +1,11 @@
+{# Favicon + theme-flash (FOUC) prevention. Included in <head>, before the
+   page's stylesheet, on every page. See docs/06-ui-review.md. #}
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+<script>
+    // Set the theme before first paint, so there's no flash of the wrong
+    // theme while the deferred nav.js (loaded at the end of <body>) runs.
+    (function () {
+        var theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+    })();
+</script>

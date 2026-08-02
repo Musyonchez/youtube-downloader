@@ -47,159 +47,8 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Navigation */
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: rgba(10, 10, 15, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    z-index: 100;
-    transition: all 0.3s ease;
-}
-
-[data-theme="light"] .navbar {
-    background: rgba(255, 255, 255, 0.95);
-}
-
-.nav-container {
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 0 24px;
-}
-
-.nav-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 0;
-}
-
-.logo a {
-    text-decoration: none;
-}
-
-.logo-text {
-    font-size: 20px;
-    font-weight: 700;
-    background: var(--gradient-1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.nav-links {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.nav-links a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
-    padding: 8px 16px;
-    border-radius: 8px;
-}
-
-.nav-links a:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
-
-.nav-links a.active {
-    color: var(--accent);
-    background: rgba(99, 102, 241, 0.1);
-}
-
-.theme-toggle,
-.settings-btn {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 0;
-}
-
-.theme-toggle:hover,
-.settings-btn:hover {
-    background: var(--border);
-    transform: scale(1.05);
-}
-
-.sun-icon {
-    display: block;
-}
-
-.moon-icon {
-    display: none;
-}
-
-[data-theme="light"] .sun-icon {
-    display: none;
-}
-
-[data-theme="light"] .moon-icon {
-    display: block;
-}
-
-.mobile-menu-btn {
-    display: none;
-    flex-direction: column;
-    gap: 6px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-}
-
-.mobile-menu-btn span {
-    width: 24px;
-    height: 2px;
-    background: var(--text-primary);
-    transition: all 0.3s;
-}
-
-.mobile-menu {
-    display: none;
-    position: fixed;
-    top: 69px;
-    left: 0;
-    right: 0;
-    background: rgba(10, 10, 15, 0.98);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 24px;
-    flex-direction: column;
-    gap: 16px;
-    z-index: 99;
-}
-
-[data-theme="light"] .mobile-menu {
-    background: rgba(255, 255, 255, 0.98);
-}
-
-.mobile-menu.active {
-    display: flex;
-}
-
-.mobile-menu a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    padding: 12px;
-    text-align: center;
-    transition: color 0.2s;
-}
+/* Navigation -- base .navbar/.nav-links/.mobile-menu/.theme-toggle/
+   .settings-btn rules live in nav.css (shared across all pages). */
 
 /* Main App Container - 70/30 Split */
 .app-container {
@@ -1153,10 +1002,11 @@ body {
 }
 
 @media (max-width: 968px) {
-    .nav-links {
+    .nav-links,
+    .nav-actions {
         display: none;
     }
-    
+
     .mobile-menu-btn {
         display: flex;
     }

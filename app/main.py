@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """FastAPI web application for YouTube MP3 downloader."""
 import logging
+from datetime import datetime
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +36,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(router)
 
 templates = Jinja2Templates(directory="templates")
+# Computed fresh per-render (not baked in at startup) so a long-running
+# process still shows the correct year in the footer on Dec 31 -> Jan 1.
+templates.env.globals["current_year"] = lambda: datetime.now().year
 
 
 @app.websocket("/ws")
@@ -68,7 +72,11 @@ async def read_app(request: Request, mode: str):
     if mode not in MODE_LABELS:
         return HTMLResponse(content="<h1>Invalid mode</h1>", status_code=404)
 
-    return templates.TemplateResponse(request, "app.html", {"mode": mode, "mode_label": MODE_LABELS[mode]})
+    return templates.TemplateResponse(
+        request,
+        "app.html",
+        {"mode": mode, "mode_label": MODE_LABELS[mode], "active_mode": mode, "show_settings": True},
+    )
 
 
 @app.get("/health")
