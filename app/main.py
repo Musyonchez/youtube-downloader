@@ -59,13 +59,16 @@ async def read_root(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
+MODE_LABELS = {"name": "Name", "playlist": "Playlist", "url": "URL"}
+
+
 @app.get("/app/{mode}", response_class=HTMLResponse)
 async def read_app(request: Request, mode: str):
     """Serve the app page with different search modes."""
-    if mode not in ["name", "playlist", "url"]:
+    if mode not in MODE_LABELS:
         return HTMLResponse(content="<h1>Invalid mode</h1>", status_code=404)
 
-    return templates.TemplateResponse(request, "app.html", {"mode": mode})
+    return templates.TemplateResponse(request, "app.html", {"mode": mode, "mode_label": MODE_LABELS[mode]})
 
 
 @app.get("/health")

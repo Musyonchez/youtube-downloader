@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube MP3 Downloader - {{ mode.title() }}</title>
+    <title>YouTube MP3 Downloader - {{ mode_label }}</title>
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
@@ -99,7 +99,7 @@
         <!-- Search Area (80%) -->
         <main class="search-area">
             <div class="search-header">
-                <h1>Search by {{ mode.title() }}</h1>
+                <h1>Search by {{ mode_label }}</h1>
                 <p class="search-subtitle">
                     {% if mode == 'name' %}
                     Search for videos by name or keyword
