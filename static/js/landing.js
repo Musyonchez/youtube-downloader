@@ -73,21 +73,12 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar background on scroll
-let lastScroll = 0;
+// Navbar shadow on scroll -- toggles a class rather than setting inline
+// styles, so the light/dark theme CSS (which sets .navbar's background)
+// isn't overridden by a hardcoded dark color here.
 window.addEventListener('scroll', () => {
     const navbar = document.querySelector('.navbar');
-    const currentScroll = window.pageYOffset;
-    
-    if (currentScroll > 100) {
-        navbar.style.background = 'rgba(10, 10, 15, 0.95)';
-        navbar.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-    } else {
-        navbar.style.background = 'rgba(10, 10, 15, 0.8)';
-        navbar.style.boxShadow = 'none';
-    }
-    
-    lastScroll = currentScroll;
+    navbar.classList.toggle('scrolled', window.pageYOffset > 100);
 });
 
 // Intersection Observer for animations
