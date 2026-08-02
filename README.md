@@ -169,18 +169,19 @@ youtube-downloader/
 ├── static/
 │   ├── css/
 │   │   ├── landing.css      # Landing page styles
-│   │   ├── app.css          # App split-screen layout
-│   │   └── style.css        # Legacy styles
+│   │   └── app.css          # App split-screen layout
 │   └── js/
 │       ├── landing.js       # Landing page interactions
 │       └── app.js           # App logic (search, queue, downloads)
 ├── templates/
 │   ├── index.html           # Landing page
-│   ├── app.html             # Main app (3 search modes)
-│   └── old.html             # Legacy backup
+│   └── app.html             # Main app (3 search modes)
 ├── utils.py                 # Storage & helper functions
 ├── search.py                # YouTube search with yt-dlp
 ├── downloader.py            # Download logic & progress tracking
+├── scripts/                 # One-off personal utility scripts
+│   ├── download_temp.py
+│   └── rename_bible.py
 ├── run.sh                   # Startup script
 ├── Makefile                 # Development commands
 ├── requirements.txt         # Production dependencies
