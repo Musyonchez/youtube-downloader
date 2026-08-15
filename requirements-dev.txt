@@ -3,3 +3,10 @@ flake8>=7.0.0
 mypy>=1.8.0
 ruff>=0.1.0
 pytest>=8.0.0
+
+# starlette.testclient (used by tests/test_api_routes.py, test_auth.py,
+# test_history_page.py) requires httpx2 on current starlette releases --
+# newer than what's cached in some local envs, which only warn instead of
+# hard-failing (StarletteDeprecationWarning vs RuntimeError). CI always
+# installs latest, so it hits the hard failure without this.
+httpx2
