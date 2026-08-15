@@ -75,7 +75,7 @@ but "safe to keep growing the library on" — yes, once AUD-01/02/03/04 land.
 | AUD-26 | P3 | Product | `GET /api/downloaded` (download history) has a working backend, zero UI | `app/api/routes.py:212-216` | New history view (real feature, not a quick fix) | Deferred — tracked as a future feature |
 | AUD-27 | P3 | UI/UX | FAQ accordion buttons don't expose `aria-expanded` | `templates/index.html:232-297`, `static/js/landing.js:5-18` | Add ARIA state | Deferred |
 | AUD-28 | P4 | Perf | `renderQueue()` fully rebuilds the DOM every 1s poll regardless of change | `static/js/queue.js:2-34` | Diff before rebuild | Deferred |
-| AUD-29 | P4 | A11y | `youtube-preview-btn` relies on `title` only, not `aria-label` | `static/js/search.js:247-256` | Add `aria-label` | Deferred |
+| AUD-29 | P4 | A11y | `youtube-preview-btn` relies on `title` only, not `aria-label` | `static/js/search.js:247-256` | Add `aria-label` | **Fixed** |
 
 Full per-area detail (all findings, including P3/P4 not tracked above) is preserved
 in the audit agents' original reports if needed later — this table keeps the ones
@@ -85,7 +85,7 @@ new feature) and are left for a future targeted pass, same pattern as prior docs
 
 ## Roadmap
 
-- **Done (commit f9975e2):** AUD-01 through AUD-17, AUD-19, AUD-25.
+- **Done (commit f9975e2):** AUD-01 through AUD-17, AUD-19, AUD-25, AUD-29.
 - **Soon:** AUD-20 (route-level tests), AUD-21/22 (filename edge cases), AUD-24 (URL allowlist).
 - **Later:** AUD-18 (routes.py → services split), AUD-23 (WS throttle).
 - **Future feature:** AUD-26 (download history UI) — this is a real feature addition,
