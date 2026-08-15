@@ -1,10 +1,13 @@
 """YouTube search and video information retrieval."""
+import logging
+
 import yt_dlp
 from rich.console import Console
 
 from app.utils import extract_video_id, format_duration
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 class YouTubeSearcher:
@@ -58,6 +61,7 @@ class YouTubeSearcher:
                 return formatted_results
 
         except Exception as e:
+            logger.exception("Search failed for query %r", query)
             console.print(f"[red]Error searching: {str(e)}[/red]")
             return []
 
@@ -85,6 +89,7 @@ class YouTubeSearcher:
                 }
 
         except Exception as e:
+            logger.exception("Failed to get video info for %r", url)
             console.print(f"[red]Error getting video info: {str(e)}[/red]")
             return None
 
@@ -135,6 +140,7 @@ class YouTubeSearcher:
                 return videos
 
         except Exception as e:
+            logger.exception("Failed to fetch playlist %r", playlist_url)
             console.print(f"[red]Error fetching playlist: {str(e)}[/red]")
             return []
 
@@ -147,26 +153,3 @@ class YouTubeSearcher:
             return True, 'video'
         else:
             return False, 'invalid'
-
-
-def test_search():
-    """Test function for search functionality."""
-    searcher = YouTubeSearcher()
-
-    # Test search by name
-    print("\n=== Testing Search by Name ===")
-    results = searcher.search_by_name("lofi hip hop", limit=5)
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result['title']} - {result['channel']} ({result['duration']})")
-
-    # Test get video info
-    print("\n=== Testing Get Video Info ===")
-    video_info = searcher.get_video_info("https://www.youtube.com/watch?v=jfKfPfyJRdk")
-    if video_info:
-        print(f"Title: {video_info['title']}")
-        print(f"Channel: {video_info['channel']}")
-        print(f"Duration: {video_info['duration']}")
-
-
-if __name__ == "__main__":
-    test_search()

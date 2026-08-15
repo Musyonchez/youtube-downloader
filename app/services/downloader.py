@@ -24,6 +24,19 @@ from app.utils import sanitize_filename
 console = Console()
 logger = logging.getLogger(__name__)
 
+
+def _safe_print(msg: str):
+    """console.print(), but never let a console-encoding failure (e.g. the
+    Windows cp1252 console choking on an emoji glyph) propagate and be
+    mistaken for a real download failure -- it previously could land in
+    download_audio's except block and skip orphan-file cleanup, or even
+    delete an already-finished file (see docs/09, AUD-04)."""
+    try:
+        console.print(msg)
+    except Exception:
+        logger.debug("console.print failed (non-fatal): %r", msg)
+
+
 # Called with (video_id, percent) as each video downloads, e.g. to broadcast over a WebSocket.
 ProgressCallback = Callable[[str, float], None]
 
@@ -70,6 +83,7 @@ class YouTubeDownloader:
     def download_audio(self, video_info: dict) -> str | None:
         """Download video as MP3 audio file."""
         base_name = None
+        output_path = None
         try:
             url = video_info['url']
             title = video_info['title']
@@ -77,12 +91,12 @@ class YouTubeDownloader:
             self._current_video_id = video_info.get('video_id')
 
             if shutil.which('ffmpeg') is None:
-                console.print(
+                logger.error("FFmpeg not found; cannot download %s", title)
+                _safe_print(
                     "[red]✗ FFmpeg not found on PATH -- required to convert downloads to MP3. "
                     "Install it (e.g. `winget install Gyan.FFmpeg` on Windows, "
                     "`sudo apt install ffmpeg` on Debian/Ubuntu) and restart the app.[/red]"
                 )
-                logger.error("FFmpeg not found; cannot download %s", title)
                 return None
 
             # Create filename: "Artist - Title.mp3"
@@ -92,10 +106,10 @@ class YouTubeDownloader:
 
             # Check if file already exists
             if output_path.exists():
-                console.print(f"[yellow]File already exists: {filename}[/yellow]")
+                _safe_print(f"[yellow]File already exists: {filename}[/yellow]")
                 return str(output_path)
 
-            console.print(f"[cyan]Downloading: {title}[/cyan]")
+            _safe_print(f"[cyan]Downloading: {title}[/cyan]")
 
             # yt-dlp options
             ydl_opts = {
@@ -136,13 +150,17 @@ class YouTubeDownloader:
             # Tag the MP3 file
             self._tag_mp3(output_path, video_info)
 
-            console.print(f"[green]✓ Downloaded: {filename}[/green]")
+            _safe_print(f"[green]✓ Downloaded: {filename}[/green]")
             return str(output_path)
 
         except Exception as e:
-            console.print(f"[red]✗ Error downloading {video_info['title']}: {str(e)}[/red]")
             logger.exception("Failed to download %s (%s)", video_info.get('title'), video_info.get('video_id'))
-            if base_name:
+            _safe_print(f"[red]✗ Error downloading {video_info.get('title')}: {e}[/red]")
+            # If yt-dlp+FFmpeg actually finished (output_path exists), this
+            # exception came from something after that -- e.g. tagging, or a
+            # console-print failure elsewhere -- so don't glob-delete the
+            # finished file; only clean up genuine partial/orphaned output.
+            if base_name and not (output_path and output_path.exists()):
                 self._cleanup_partial_download(base_name)
             return None
 
@@ -178,55 +196,5 @@ class YouTubeDownloader:
             audio.save()
 
         except Exception as e:
-            console.print(f"[yellow]Warning: Could not tag file: {str(e)}[/yellow]")
-
-    def download_batch(self, video_list: list[dict]) -> list[dict]:
-        """Download multiple videos and return results."""
-        results = []
-
-        console.print(f"\n[bold cyan]Starting batch download of {len(video_list)} items...[/bold cyan]\n")
-
-        for i, video_info in enumerate(video_list, 1):
-            console.print(f"[bold]({i}/{len(video_list)})[/bold]")
-
-            file_path = self.download_audio(video_info)
-
-            result = {
-                **video_info,
-                'success': file_path is not None,
-                'file_path': file_path
-            }
-            results.append(result)
-
-            console.print()  # Add blank line between downloads
-
-        # Summary
-        success_count = sum(1 for r in results if r['success'])
-        console.print(f"\n[bold green]✓ Successfully downloaded: {success_count}/{len(video_list)}[/bold green]")
-
-        if success_count < len(video_list):
-            failed_count = len(video_list) - success_count
-            console.print(f"[bold red]✗ Failed: {failed_count}[/bold red]")
-
-        return results
-
-
-def test_download():
-    """Test function for download functionality."""
-    downloader = YouTubeDownloader()
-
-    test_video = {
-        'video_id': 'jfKfPfyJRdk',
-        'title': 'lofi hip hop radio',
-        'channel': 'Lofi Girl',
-        'duration': '00:00',
-        'url': 'https://www.youtube.com/watch?v=jfKfPfyJRdk'
-    }
-
-    print("Testing download...")
-    result = downloader.download_audio(test_video)
-    print(f"Download result: {result}")
-
-
-if __name__ == "__main__":
-    test_download()
+            logger.warning("Could not tag %s: %s", file_path, e)
+            _safe_print(f"[yellow]Warning: Could not tag file: {e}[/yellow]")

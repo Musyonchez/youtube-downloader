@@ -122,3 +122,9 @@ class Storage:
             return 'queued'
         else:
             return 'new'
+
+    def get_statuses(self, video_ids: list[str]) -> dict[str, str]:
+        """Batch version of get_item_status -- two queries total instead of
+        up to 2 per id. Use this for search/playlist results (dozens to
+        hundreds of items) instead of looping get_item_status()."""
+        return self.db.get_statuses(video_ids)

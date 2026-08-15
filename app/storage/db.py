@@ -112,9 +112,46 @@ class Database:
             self._conn.commit()
 
     def is_downloaded(self, video_id: str) -> bool:
+        """True only for a *successful* download -- a failed attempt leaves a row
+        (so its history isn't lost) but must not block the video from being
+        re-queued, so this checks success=1 rather than mere row presence."""
         with self._lock:
-            row = self._conn.execute("SELECT 1 FROM downloaded WHERE video_id = ?", (video_id,)).fetchone()
+            row = self._conn.execute(
+                "SELECT 1 FROM downloaded WHERE video_id = ? AND success = 1", (video_id,)
+            ).fetchone()
             return row is not None
+
+    def get_statuses(self, video_ids: list[str]) -> dict[str, str]:
+        """Batch status lookup: 'downloaded' | 'queued' | 'new' per video_id.
+
+        Replaces calling is_downloaded()/is_in_library() once per item (each its
+        own locked round-trip) with two IN-queries total, regardless of how many
+        ids are passed -- matters for playlists, which can be up to 1000 items.
+        """
+        if not video_ids:
+            return {}
+        with self._lock:
+            placeholders = ','.join('?' * len(video_ids))
+            downloaded_ids = {
+                row['video_id'] for row in self._conn.execute(
+                    f"SELECT video_id FROM downloaded WHERE success = 1 AND video_id IN ({placeholders})",
+                    video_ids,
+                ).fetchall()
+            }
+            library_ids = {
+                row['video_id'] for row in self._conn.execute(
+                    f"SELECT video_id FROM library WHERE video_id IN ({placeholders})", video_ids
+                ).fetchall()
+            }
+        statuses = {}
+        for vid in video_ids:
+            if vid in downloaded_ids:
+                statuses[vid] = 'downloaded'
+            elif vid in library_ids:
+                statuses[vid] = 'queued'
+            else:
+                statuses[vid] = 'new'
+        return statuses
 
     def count_library(self) -> int:
         with self._lock:

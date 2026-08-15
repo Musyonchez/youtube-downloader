@@ -12,12 +12,12 @@
     {% include "partials/navbar.html" %}
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
         <div class="modal-overlay" onclick="toggleSettings()"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="modal-close" onclick="toggleSettings()">
+                <h2 id="settings-modal-title">Settings</h2>
+                <button class="modal-close" onclick="toggleSettings()" aria-label="Close settings">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -26,7 +26,7 @@
             </div>
             <div class="modal-body">
                 <div class="setting-item">
-                    <label>Audio Quality:</label>
+                    <label for="audio-quality">Audio Quality:</label>
                     <select id="audio-quality">
                         <option value="128">128 kbps</option>
                         <option value="192">192 kbps</option>
@@ -35,7 +35,7 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label>Download Directory:</label>
+                    <label for="download-dir">Download Directory:</label>
                     <input type="text" id="download-dir" value="./downloads">
                 </div>
             </div>
@@ -68,6 +68,7 @@
                 <input
                     type="text"
                     id="search-input"
+                    aria-label="Search by {{ mode_label }}"
                     placeholder="{% if mode == 'name' %}Search for videos...{% elif mode == 'playlist' %}Paste playlist URL...{% else %}Paste video URL...{% endif %}"
                     onkeypress="handleSearchEnter(event)"
                 >
@@ -175,7 +176,7 @@
     </button>
 
     <!-- Toast Notifications -->
-    <div id="toast" class="toast hidden"></div>
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <script>
         // Pass the search mode to JavaScript

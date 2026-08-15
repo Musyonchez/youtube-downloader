@@ -114,7 +114,16 @@ async function downloadSingle(videoId) {
             const stillInQueue = queue.some(v => v.video_id === videoId);
             if (!stillInQueue) {
                 clearInterval(interval);
-                showToast('Download complete!', 'success');
+                // Trust the actual outcome (from the WS download_complete
+                // message) rather than assuming success just because the
+                // item left the queue -- a failed download leaves the queue
+                // too. The failure toast is already shown by websocket.js;
+                // only announce success here, and only when we know it.
+                const succeeded = downloadOutcomes[videoId];
+                delete downloadOutcomes[videoId];
+                if (succeeded !== false) {
+                    showToast('Download complete!', 'success');
+                }
             }
         }, 1000); // Poll every second
     } catch (error) {

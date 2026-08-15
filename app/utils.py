@@ -1,5 +1,20 @@
 """Pure helper functions: URL parsing, filename sanitizing, duration formatting."""
+import os
 import re
+from pathlib import Path
+
+# Directories a download_dir must never resolve into, even though the app
+# otherwise lets the user point it anywhere they like (it's a single-user
+# LAN tool with genuinely arbitrary custom folders as a supported use case).
+# This blocks the concrete abuse case -- an unauthenticated LAN client
+# redirecting downloads into an OS-sensitive location -- without limiting
+# legitimate custom paths.
+_WINDOWS_SENSITIVE_DIRS = (
+    Path(os.environ.get('WINDIR', 'C:/Windows')),
+    Path(os.environ.get('APPDATA', '')) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs' / 'Startup',
+    Path(os.environ.get('PROGRAMFILES', 'C:/Program Files')),
+)
+_POSIX_SENSITIVE_DIRS = (Path('/etc'), Path('/bin'), Path('/usr'), Path('/root'), Path('/boot'), Path('/sbin'))
 
 
 def extract_video_id(url: str) -> str | None:
@@ -29,6 +44,35 @@ def sanitize_filename(filename: str) -> str:
     # Remove extra whitespace
     filename = ' '.join(filename.split())
     return filename
+
+
+def validate_download_dir(path_str: str) -> str:
+    """Reject a download_dir that would write into an OS-sensitive location.
+
+    Raises ValueError with a user-facing reason if the path is empty, is a
+    filesystem/drive root, or resolves into (or above) a known-sensitive
+    directory. Returns the input unchanged (not the resolved path) so
+    relative paths the user configured stay relative -- only used to
+    validate, not to rewrite, the config value.
+    """
+    if not path_str or not path_str.strip():
+        raise ValueError("download_dir cannot be empty")
+
+    resolved = Path(path_str).expanduser().resolve()
+
+    if resolved.anchor and resolved == Path(resolved.anchor):
+        raise ValueError("download_dir cannot be a drive/filesystem root")
+
+    sensitive_dirs = _WINDOWS_SENSITIVE_DIRS if os.name == 'nt' else _POSIX_SENSITIVE_DIRS
+    for sensitive in sensitive_dirs:
+        try:
+            sensitive_resolved = sensitive.resolve()
+        except OSError:
+            continue
+        if str(sensitive_resolved) and (resolved == sensitive_resolved or sensitive_resolved in resolved.parents):
+            raise ValueError(f"download_dir cannot be inside {sensitive_resolved}")
+
+    return path_str
 
 
 def format_duration(seconds) -> str:

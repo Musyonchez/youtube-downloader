@@ -76,6 +76,38 @@ def test_downloaded_failed_download_stores_no_file_path(db):
     assert downloaded[0]["file_path"] is None
 
 
+def test_downloaded_failed_download_is_not_is_downloaded(db):
+    """A failed attempt is recorded (for history/debugging) but must not
+    block the video from being re-queued -- is_downloaded() should only
+    match success=1 rows, not mere row presence."""
+    item = {**make_video(), "success": False, "file_path": None}
+    db.add_downloaded_item(item, downloaded_at="2026-01-01 00:00:00")
+    assert db.is_downloaded("abc123") is False
+
+
+def test_get_statuses_batch(db):
+    db.add_library_item(make_video("queued1"), added_at="2026-01-01 00:00:00")
+    db.add_downloaded_item(
+        {**make_video("done1"), "success": True, "file_path": "x.mp3"}, downloaded_at="2026-01-01 00:00:00"
+    )
+    db.add_downloaded_item(
+        {**make_video("failed1"), "success": False, "file_path": None}, downloaded_at="2026-01-01 00:00:00"
+    )
+
+    statuses = db.get_statuses(["queued1", "done1", "failed1", "new1"])
+
+    assert statuses == {
+        "queued1": "queued",
+        "done1": "downloaded",
+        "failed1": "new",  # failed download is re-queueable, reads as 'new'
+        "new1": "new",
+    }
+
+
+def test_get_statuses_empty_list(db):
+    assert db.get_statuses([]) == {}
+
+
 def test_counts(db):
     assert db.count_library() == 0
     assert db.count_downloaded() == 0

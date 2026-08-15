@@ -217,6 +217,12 @@ function createVideoCard(video) {
 
     if (video.status === 'downloaded') {
         card.classList.add('downloaded');
+    } else if (video.status === 'queued') {
+        // Queued cards have no click target (no Add button, nothing else
+        // handles a card click) -- mark them inert the same way downloaded
+        // cards are, instead of leaving a hover/pointer affordance that leads
+        // nowhere.
+        card.classList.add('queued');
     }
 
     // Thumbnail
@@ -250,6 +256,7 @@ function createVideoCard(video) {
     youtubeBtn.target = '_blank';
     youtubeBtn.rel = 'noopener noreferrer';
     youtubeBtn.title = 'Preview on YouTube';
+    youtubeBtn.setAttribute('aria-label', 'Preview on YouTube');
     youtubeBtn.innerHTML = '▶';
     youtubeBtn.onclick = (e) => {
         e.stopPropagation(); // Prevent card click when clicking preview
@@ -259,7 +266,7 @@ function createVideoCard(video) {
     // Status badge
     if (video.status && video.status !== 'new') {
         const statusBadge = document.createElement('div');
-        statusBadge.className = 'status-badge';
+        statusBadge.className = video.status === 'downloaded' ? 'status-badge' : 'status-badge queued';
         statusBadge.textContent = video.status === 'downloaded' ? 'Downloaded' : 'Queued';
         thumbnailContainer.appendChild(statusBadge);
     }

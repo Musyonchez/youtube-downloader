@@ -10,8 +10,13 @@ function setupWebSocket() {
 
         if (data.type === 'progress') {
             updateQueueItemProgress(data.video_id, data.percent);
-        } else if (data.type === 'download_complete' && !data.success) {
-            showToast('A download failed -- check the server logs', 'error');
+        } else if (data.type === 'download_complete') {
+            // Recorded so downloadSingle() (queue.js) can report the real
+            // outcome instead of assuming success once the item leaves the queue.
+            downloadOutcomes[data.video_id] = data.success;
+            if (!data.success) {
+                showToast('A download failed -- check the server logs', 'error');
+            }
         }
     };
 

@@ -11,6 +11,11 @@
     --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
     --success: #10b981;
     --warning: #f85149;
+    /* Darker than --success/--warning specifically for white-text badges --
+       #10b981/#f85149 fall under WCAG AA's 4.5:1 minimum for white text. */
+    --success-strong: #047857;
+    --warning-strong: #b91c1c;
+    --queued: #2563eb;
     --border: #27272a;
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -156,6 +161,7 @@ body {
 .view-toggle,
 .filter-toggle {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     background: var(--bg-tertiary);
     border-radius: 8px;
@@ -398,12 +404,14 @@ body {
     border-color: var(--accent);
 }
 
-.video-card.downloaded {
+.video-card.downloaded,
+.video-card.queued {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.video-card.downloaded:hover {
+.video-card.downloaded:hover,
+.video-card.queued:hover {
     transform: none;
 }
 
@@ -442,8 +450,14 @@ body {
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    background: var(--success);
+    background: var(--success-strong);
     color: white;
+}
+
+/* Distinct from "downloaded" -- same badge otherwise looked identical for
+   both states, so status could only be told apart by reading the text. */
+.status-badge.queued {
+    background: var(--queued);
 }
 
 .youtube-preview-btn {
@@ -740,7 +754,7 @@ body {
     position: absolute;
     top: -8px;
     right: -8px;
-    background: var(--warning);
+    background: var(--warning-strong);
     color: white;
     font-size: 12px;
     font-weight: 700;

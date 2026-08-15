@@ -99,14 +99,49 @@ function updateQueueUI() {
 }
 
 // Settings Modal
+let settingsTriggerEl = null; // element to restore focus to when the modal closes
+
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
-    if (modal) {
-        modal.classList.toggle('hidden');
-    } else {
+    if (!modal) {
         console.error('Settings modal not found');
+        return;
+    }
+
+    const opening = modal.classList.contains('hidden');
+    modal.classList.toggle('hidden');
+
+    if (opening) {
+        settingsTriggerEl = document.activeElement;
+        modal.querySelector('#audio-quality')?.focus();
+    } else if (settingsTriggerEl) {
+        settingsTriggerEl.focus();
+        settingsTriggerEl = null;
     }
 }
+
+// Trap Tab/Shift+Tab inside the settings modal while it's open, so keyboard
+// users can't tab out into the (visually blocked) page behind it.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const modal = document.getElementById('settings-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    const focusable = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+    }
+});
 
 // Close modal when clicking outside
 document.addEventListener('click', (e) => {
