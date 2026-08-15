@@ -1,12 +1,15 @@
 # GitGuardian secret-scanning config.
 #
-# Excludes tests/ from scanning: auth/session tests necessarily contain
-# example username/password pairs (e.g. tests/test_auth_routes.py) that
-# GitGuardian's generic "Username Password" detector flags as a hardcoded
-# secret. These are test fixtures, not real credentials -- confirmed by
-# inspecting the actual flagged content, not dismissed reflexively (see
-# docs/09's audit standard: read the finding before deciding it's noise).
+# Excludes only tests/test_auth_routes.py, not the whole tests/ tree
+# (narrowed after review feedback: excluding the entire directory would
+# create a blind spot for any *real* secret accidentally committed into a
+# test later -- this scopes it to the one file with the known false
+# positive instead). It contains example username/password pairs (e.g.
+# password="hunter22") that GitGuardian's generic "Username Password"
+# detector flags -- confirmed to be test fixtures, not real credentials,
+# by inspecting the actual flagged content (see docs/09's audit standard:
+# read the finding before deciding it's noise).
 version: 2
 secret:
   ignored-paths:
-    - "tests/**"
+    - "tests/test_auth_routes.py"
