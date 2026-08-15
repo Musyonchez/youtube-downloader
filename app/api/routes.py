@@ -1,26 +1,39 @@
 """API routes for YouTube downloader."""
-import os
-import sys
+import asyncio
+import logging
+import threading
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# Add parent directory to path to import our modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.services.download_orchestrator import run_download_task
+from app.services.downloader import YouTubeDownloader
+from app.services.search import YouTubeSearcher
+from app.storage.storage import Storage
+from app.utils import validate_download_dir
+from app.ws_manager import manager
 
-from downloader import YouTubeDownloader
-from search import YouTubeSearcher
-from utils import Storage
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 storage = Storage()
 searcher = YouTubeSearcher()
 
+# Guards against two /api/download requests running concurrently: without
+# this, two overlapping background tasks can both pass download_audio()'s
+# "does the file already exist" check before either has written anything,
+# then both invoke yt-dlp against the *same* output path at the same time.
+_download_lock = threading.Lock()
+_download_in_progress = False
+
+AudioQuality = Literal["128", "192", "256", "320"]
+
 
 # Request/Response models
 class SearchRequest(BaseModel):
     query: str
-    limit: int = 15
+    limit: int = Field(default=15, ge=1, le=100)
 
 
 class URLRequest(BaseModel):
@@ -41,17 +54,21 @@ class StatusResponse(BaseModel):
     downloaded_count: int
 
 
+class ConfigUpdate(BaseModel):
+    """Partial config update -- only fields that are set get applied."""
+    audio_quality: AudioQuality | None = None
+    format: Literal["mp3"] | None = None
+    download_dir: str | None = None
+
+
 # API Endpoints
 
 @router.get("/api/status")
 async def get_status() -> StatusResponse:
     """Get current status (queue count, downloaded count)."""
-    library = storage.load_library()
-    downloaded = storage.load_downloaded()
-
     return StatusResponse(
-        library_count=len(library),
-        downloaded_count=len(downloaded)
+        library_count=storage.count_library(),
+        downloaded_count=storage.count_downloaded()
     )
 
 
@@ -60,14 +77,9 @@ async def search_videos(request: SearchRequest) -> dict:
     """Search YouTube by query."""
     results = searcher.search_by_name(request.query, request.limit)
 
-    # Add status to each result
-    enhanced_results = []
-    for video in results:
-        status = storage.get_item_status(video['video_id'])
-        enhanced_results.append({
-            **video,
-            'status': status
-        })
+    # Batch status lookup: 2 queries total instead of up to 2 per result.
+    statuses = storage.get_statuses([video['video_id'] for video in results])
+    enhanced_results = [{**video, 'status': statuses[video['video_id']]} for video in results]
 
     return {"results": enhanced_results}
 
@@ -109,14 +121,17 @@ async def get_playlist_info(request: URLRequest) -> dict:
     if not videos:
         raise HTTPException(status_code=404, detail="Could not fetch playlist")
 
-    # Add status to each video
+    # Batch status lookup -- matters most here: playlists can be up to 1000
+    # items, which used to mean up to 2000 sequential locked SQLite calls.
+    statuses = storage.get_statuses([video['video_id'] for video in videos])
+
     new_count = 0
     queued_count = 0
     downloaded_count = 0
 
     enhanced_videos = []
     for video in videos:
-        status = storage.get_item_status(video['video_id'])
+        status = statuses[video['video_id']]
         enhanced_videos.append({
             **video,
             'status': status
@@ -165,29 +180,6 @@ async def add_to_library(video: VideoItem) -> dict:
     return {"message": "Added to library", "video_id": video.video_id}
 
 
-@router.post("/api/library/add-multiple")
-async def add_multiple_to_library(videos: list[VideoItem]) -> dict:
-    """Add multiple videos to library."""
-    added = 0
-    skipped = 0
-
-    for video in videos:
-        video_dict = video.dict()
-        status = storage.get_item_status(video.video_id)
-
-        if status == 'new':
-            storage.add_to_library(video_dict)
-            added += 1
-        else:
-            skipped += 1
-
-    return {
-        "message": f"Added {added} videos, skipped {skipped}",
-        "added": added,
-        "skipped": skipped
-    }
-
-
 @router.delete("/api/library/{video_id}")
 async def remove_from_library(video_id: str) -> dict:
     """Remove video from library."""
@@ -217,57 +209,60 @@ async def get_config() -> dict:
 
 
 @router.post("/api/config")
-async def update_config(config: dict) -> dict:
-    """Update configuration."""
-    storage.update_config(**config)
+async def update_config(config: ConfigUpdate) -> dict:
+    """Update configuration. Only fields provided in the request are changed."""
+    updates = config.dict(exclude_unset=True, exclude_none=True)
+
+    if 'download_dir' in updates:
+        try:
+            validate_download_dir(updates['download_dir'])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    storage.update_config(**updates)
     return {"message": "Configuration updated"}
 
 
 # Background task for downloading
-def download_task(video_ids: list[str] | None = None):
-    """Background task to download videos."""
-    library = storage.load_library()
+def download_task(video_ids: list[str] | None, loop: asyncio.AbstractEventLoop):
+    """Background-thread entrypoint for FastAPI's BackgroundTasks.
 
-    # Filter by video_ids if provided
-    if video_ids:
-        library = [v for v in library if v['video_id'] in video_ids]
-
-    if not library:
-        return
-
-    config = storage.load_config()
-    downloader = YouTubeDownloader(
-        download_dir=config['download_dir'],
-        audio_quality=config['audio_quality']
-    )
-
-    # Download each video individually and update queue immediately
-    for video_info in library:
-        file_path = downloader.download_audio(video_info)
-
-        # Always remove from queue after attempting download
-        storage.remove_from_library(video_info['video_id'])
-
-        # Only add to downloaded history if successful
-        if file_path:
-            result = {
-                **video_info,
-                'success': True,
-                'file_path': file_path
-            }
-            storage.add_to_downloaded(result)
+    The actual batch-download logic lives in
+    app.services.download_orchestrator.run_download_task (kept in the
+    services layer, not here -- see docs/09, AUD-18); this wrapper's only
+    job is bridging that into the background-task API and releasing the
+    concurrency guard (_download_lock, see start_download) once done,
+    success or failure.
+    """
+    global _download_in_progress
+    try:
+        run_download_task(storage, manager, video_ids, loop, downloader_cls=YouTubeDownloader)
+    finally:
+        with _download_lock:
+            _download_in_progress = False
 
 
 @router.post("/api/download")
 async def start_download(background_tasks: BackgroundTasks, video_ids: list[str] | None = None) -> dict:
     """Start downloading library (or specific videos)."""
+    global _download_in_progress
+
     library = storage.load_library()
 
     if not library:
         raise HTTPException(status_code=400, detail="Library is empty")
 
-    # Start download in background
-    background_tasks.add_task(download_task, video_ids)
+    # Reject a second concurrent download run rather than letting two
+    # background tasks race on the same output file (see _download_lock).
+    with _download_lock:
+        if _download_in_progress:
+            raise HTTPException(status_code=409, detail="A download is already in progress")
+        _download_in_progress = True
+
+    # Start download in background, passing the current event loop so the
+    # worker thread can broadcast progress back to WebSocket clients.
+    loop = asyncio.get_running_loop()
+    background_tasks.add_task(download_task, video_ids, loop)
 
     count = len(video_ids) if video_ids else len(library)
 

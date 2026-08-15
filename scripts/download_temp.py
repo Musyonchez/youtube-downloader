@@ -1,6 +1,7 @@
 """One-shot playlist downloader to temp folder. No library/downloaded JSON touched."""
-import yt_dlp
 from pathlib import Path
+
+import yt_dlp
 
 PLAYLIST_URL = "https://www.youtube.com/playlist?list=PL6yWf1f8-MdvCuVd0ahWvnl85t3JxuptA"
 OUTPUT_DIR = Path("./temp")

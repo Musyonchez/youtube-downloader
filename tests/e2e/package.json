@@ -1,0 +1,11 @@
+{
+  "name": "youtube-downloader-e2e",
+  "private": true,
+  "description": "Browser-level smoke tests, run against a mocked-search dev server. See docs/05-browser-verification.md.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

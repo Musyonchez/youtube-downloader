@@ -1,71 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube MP3 Downloader - {{ mode.title() }}</title>
+    <title>YouTube MP3 Downloader - {{ mode_label }}</title>
+    {% include "partials/head_extras.html" %}
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/nav.css">
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-content">
-                <div class="logo">
-                    <a href="/">
-                        <span class="logo-text">YT Downloader</span>
-                    </a>
-                </div>
-                <div class="nav-links">
-                    <a href="/app/name" class="{{ 'active' if mode == 'name' else '' }}">Name</a>
-                    <a href="/app/playlist" class="{{ 'active' if mode == 'playlist' else '' }}">Playlist</a>
-                    <a href="/app/url" class="{{ 'active' if mode == 'url' else '' }}">URL</a>
-                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
-                    <button class="settings-btn" onclick="toggleSettings()" aria-label="Settings">
-                        <svg width="20" height="20" fill="none" stroke-width="1.5" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
-                        </svg>
-                    </button>
-                </div>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="/app/name" onclick="toggleMobileMenu()">Name</a>
-        <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
-        <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
-    </div>
+    {% include "partials/navbar.html" %}
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
         <div class="modal-overlay" onclick="toggleSettings()"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="modal-close" onclick="toggleSettings()">
+                <h2 id="settings-modal-title">Settings</h2>
+                <button class="modal-close" onclick="toggleSettings()" aria-label="Close settings">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -74,7 +27,7 @@
             </div>
             <div class="modal-body">
                 <div class="setting-item">
-                    <label>Audio Quality:</label>
+                    <label for="audio-quality">Audio Quality:</label>
                     <select id="audio-quality">
                         <option value="128">128 kbps</option>
                         <option value="192">192 kbps</option>
@@ -83,7 +36,7 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label>Download Directory:</label>
+                    <label for="download-dir">Download Directory:</label>
                     <input type="text" id="download-dir" value="./downloads">
                 </div>
             </div>
@@ -99,7 +52,7 @@
         <!-- Search Area (80%) -->
         <main class="search-area">
             <div class="search-header">
-                <h1>Search by {{ mode.title() }}</h1>
+                <h1>Search by {{ mode_label }}</h1>
                 <p class="search-subtitle">
                     {% if mode == 'name' %}
                     Search for videos by name or keyword
@@ -116,6 +69,7 @@
                 <input
                     type="text"
                     id="search-input"
+                    aria-label="Search by {{ mode_label }}"
                     placeholder="{% if mode == 'name' %}Search for videos...{% elif mode == 'playlist' %}Paste playlist URL...{% else %}Paste video URL...{% endif %}"
                     onkeypress="handleSearchEnter(event)"
                 >
@@ -131,22 +85,29 @@
                     <span class="stat">Queue: <strong id="queue-count">0</strong></span>
                     <span class="stat">Downloaded: <strong id="downloaded-count">0</strong></span>
                 </div>
-                <div class="view-toggle">
-                    <button class="view-btn active" data-view="grid" onclick="toggleView('grid')" aria-label="Grid view" title="Grid view">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
-                        </svg>
-                    </button>
-                    <button class="view-btn" data-view="compact" onclick="toggleView('compact')" aria-label="Compact view" title="Compact view">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"></line>
-                            <line x1="3" y1="12" x2="21" y2="12"></line>
-                            <line x1="3" y1="18" x2="21" y2="18"></line>
-                        </svg>
-                    </button>
+                <div class="stats-right">
+                    <div class="filter-toggle">
+                        <button class="filter-btn active" data-filter="all" onclick="setResultsFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="downloaded" onclick="setResultsFilter('downloaded')">Downloaded</button>
+                        <button class="filter-btn" data-filter="not-downloaded" onclick="setResultsFilter('not-downloaded')">Not Downloaded</button>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" onclick="toggleView('grid')" aria-label="Grid view" title="Grid view">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button class="view-btn" data-view="compact" onclick="toggleView('compact')" aria-label="Compact view" title="Compact view">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -216,12 +177,27 @@
     </button>
 
     <!-- Toast Notifications -->
-    <div id="toast" class="toast hidden"></div>
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <script>
         // Pass the search mode to JavaScript
         window.SEARCH_MODE = '{{ mode }}';
     </script>
-    <script src="/static/js/app.js"></script>
+    <!-- Plain scripts sharing global scope (no bundler/module system by
+         design -- see docs/03-full-improvement-plan.md). nav.js is shared
+         with the landing page (docs/06-ui-review.md); state.js must load
+         before the rest since they reference its variables; cards.js (the
+         shared card-builder, docs/13 Track A) must load before search.js
+         since it calls createCard(); main.js must load last since its
+         DOMContentLoaded handler calls functions from all the others. -->
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/state.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/cards.js"></script>
+    <script src="/static/js/search.js"></script>
+    <script src="/static/js/queue.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/main.js"></script>
 </body>
 </html>

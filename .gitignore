@@ -1,5 +1,14 @@
-# Download folder (keep tracked songs in downloaded.json instead)
+# Download folder (actual MP3 files -- runtime output, not source)
 downloads/
+
+# Runtime data: config + library/history DB. SQLite is binary, so tracking
+# it in git (like downloaded.json used to be) would mean an opaque,
+# undiffable commit on every single download. Back it up separately
+# (filesystem backup / the Docker volume) instead.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
 
 # Hold folders with music files
 hold/hold1/
@@ -20,6 +29,12 @@ __pycache__/
 venv/
 env/
 ENV/
+
+# E2E test tooling (tests/e2e/) -- keep package.json/package-lock.json,
+# playwright.config.js, and *.spec.js tracked; not node_modules/results.
+tests/e2e/node_modules/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
 
 # IDE
 .vscode/

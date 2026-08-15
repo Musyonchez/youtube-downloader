@@ -1,10 +1,16 @@
 """YouTube search and video information retrieval."""
+import logging
+from urllib.parse import urlsplit
+
 import yt_dlp
 from rich.console import Console
 
-from utils import extract_video_id, format_duration
+from app.utils import extract_video_id, format_duration
 
 console = Console()
+logger = logging.getLogger(__name__)
+
+_ALLOWED_HOSTS = {'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'}
 
 
 class YouTubeSearcher:
@@ -58,6 +64,7 @@ class YouTubeSearcher:
                 return formatted_results
 
         except Exception as e:
+            logger.exception("Search failed for query %r", query)
             console.print(f"[red]Error searching: {str(e)}[/red]")
             return []
 
@@ -85,6 +92,7 @@ class YouTubeSearcher:
                 }
 
         except Exception as e:
+            logger.exception("Failed to get video info for %r", url)
             console.print(f"[red]Error getting video info: {str(e)}[/red]")
             return None
 
@@ -135,38 +143,30 @@ class YouTubeSearcher:
                 return videos
 
         except Exception as e:
+            logger.exception("Failed to fetch playlist %r", playlist_url)
             console.print(f"[red]Error fetching playlist: {str(e)}[/red]")
             return []
 
     def validate_url(self, url: str) -> tuple[bool, str]:
-        """Validate if URL is a valid YouTube URL and return type."""
-        # Check if it's a playlist, mix, or radio (has list= parameter)
-        if 'list=' in url:
-            return True, 'playlist'
-        elif 'youtube.com' in url or 'youtu.be' in url:
-            return True, 'video'
-        else:
+        """Validate if URL is a valid YouTube URL and return type.
+
+        Parses the actual host rather than doing a raw substring check --
+        'youtube.com' in url would also match e.g.
+        https://evil.example/?x=youtube.com or https://youtube.com.evil.com/,
+        handing yt-dlp's generic extractor an arbitrary attacker-chosen host
+        to fetch (SSRF-flavored; this app is reachable by any device on the
+        LAN, not just its owner, so a substring check is a real gap here).
+        """
+        # Tolerate a missing scheme (e.g. "youtube.com/watch?v=x") -- urlsplit
+        # only populates netloc when the string starts with "//".
+        parsed = urlsplit(url if '//' in url else f'//{url}')
+        host = parsed.netloc.split('@')[-1].split(':')[0].lower()
+
+        if host not in _ALLOWED_HOSTS:
             return False, 'invalid'
 
-
-def test_search():
-    """Test function for search functionality."""
-    searcher = YouTubeSearcher()
-
-    # Test search by name
-    print("\n=== Testing Search by Name ===")
-    results = searcher.search_by_name("lofi hip hop", limit=5)
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result['title']} - {result['channel']} ({result['duration']})")
-
-    # Test get video info
-    print("\n=== Testing Get Video Info ===")
-    video_info = searcher.get_video_info("https://www.youtube.com/watch?v=jfKfPfyJRdk")
-    if video_info:
-        print(f"Title: {video_info['title']}")
-        print(f"Channel: {video_info['channel']}")
-        print(f"Duration: {video_info['duration']}")
-
-
-if __name__ == "__main__":
-    test_search()
+        # Check the query string specifically (not the whole URL) for the
+        # playlist/mix/radio marker.
+        if 'list=' in parsed.query:
+            return True, 'playlist'
+        return True, 'video'

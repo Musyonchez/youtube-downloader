@@ -1,0 +1,44 @@
+# Fly.io app config -- see docs/14-deployment.md for the full deploy
+# runbook (volumes, secrets, first-time setup).
+app = "yt-mp3-downloader"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  processes = ["app"]
+  # Kept always-on rather than scale-to-zero: downloads run as background
+  # tasks after the triggering HTTP request already returned, so an idle
+  # HTTP listener doesn't mean no work is happening -- auto-stop would risk
+  # killing an in-progress download the moment the phone/browser that
+  # queued it closes its WebSocket connection.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# A single volume: Fly Machines only support one mounted volume per
+# machine (confirmed at deploy time -- the original plan of two separate
+# volumes for data vs. downloads doesn't work on this platform). Both the
+# SQLite DB/config.json AND the actual downloaded MP3s live under this one
+# mount instead -- the download_dir setting is pointed at a subdirectory
+# of it post-deploy (see docs/14-deployment.md) rather than the default
+# "./downloads", which would otherwise resolve to ephemeral storage.
+[[mounts]]
+  source = "yt_downloader_data"
+  destination = "/srv/data"

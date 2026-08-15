@@ -1,32 +1,8 @@
 /* YouTube Downloader App - Split Screen Layout */
 
-:root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #131318;
-    --bg-tertiary: #1a1a23;
-    --text-primary: #ffffff;
-    --text-secondary: #a8a8b3;
-    --accent: #6366f1;
-    --accent-hover: #7c3aed;
-    --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
-    --success: #10b981;
-    --warning: #f85149;
-    --border: #27272a;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Light Mode */
-[data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --bg-tertiary: #f1f3f5;
-    --text-primary: #1a1a1a;
-    --text-secondary: #6b7280;
-    --border: #e5e7eb;
-}
+/* Shared color tokens (:root / [data-theme="light"]) now live in
+   variables.css, loaded before this file -- see docs/12-ui-redesign-plan.md
+   step 1. */
 
 * {
     margin: 0;
@@ -47,159 +23,8 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Navigation */
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: rgba(10, 10, 15, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    z-index: 100;
-    transition: all 0.3s ease;
-}
-
-[data-theme="light"] .navbar {
-    background: rgba(255, 255, 255, 0.95);
-}
-
-.nav-container {
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 0 24px;
-}
-
-.nav-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 0;
-}
-
-.logo a {
-    text-decoration: none;
-}
-
-.logo-text {
-    font-size: 20px;
-    font-weight: 700;
-    background: var(--gradient-1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.nav-links {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.nav-links a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
-    padding: 8px 16px;
-    border-radius: 8px;
-}
-
-.nav-links a:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
-
-.nav-links a.active {
-    color: var(--accent);
-    background: rgba(99, 102, 241, 0.1);
-}
-
-.theme-toggle,
-.settings-btn {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 0;
-}
-
-.theme-toggle:hover,
-.settings-btn:hover {
-    background: var(--border);
-    transform: scale(1.05);
-}
-
-.sun-icon {
-    display: block;
-}
-
-.moon-icon {
-    display: none;
-}
-
-[data-theme="light"] .sun-icon {
-    display: none;
-}
-
-[data-theme="light"] .moon-icon {
-    display: block;
-}
-
-.mobile-menu-btn {
-    display: none;
-    flex-direction: column;
-    gap: 6px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-}
-
-.mobile-menu-btn span {
-    width: 24px;
-    height: 2px;
-    background: var(--text-primary);
-    transition: all 0.3s;
-}
-
-.mobile-menu {
-    display: none;
-    position: fixed;
-    top: 69px;
-    left: 0;
-    right: 0;
-    background: rgba(10, 10, 15, 0.98);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 24px;
-    flex-direction: column;
-    gap: 16px;
-    z-index: 99;
-}
-
-[data-theme="light"] .mobile-menu {
-    background: rgba(255, 255, 255, 0.98);
-}
-
-.mobile-menu.active {
-    display: flex;
-}
-
-.mobile-menu a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    padding: 12px;
-    text-align: center;
-    transition: color 0.2s;
-}
+/* Navigation -- base .navbar/.nav-links/.mobile-menu/.theme-toggle/
+   .settings-btn rules live in nav.css (shared across all pages). */
 
 /* Main App Container - 70/30 Split */
 .app-container {
@@ -267,7 +92,7 @@ body {
 .search-bar input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(160, 106, 47, 0.1);
 }
 
 .search-bar button {
@@ -298,15 +123,24 @@ body {
     font-size: 18px;
 }
 
-.view-toggle {
+.stats-right {
     display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.view-toggle,
+.filter-toggle {
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     background: var(--bg-tertiary);
     border-radius: 8px;
     padding: 4px;
 }
 
-.view-btn {
+.view-btn,
+.filter-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
@@ -319,12 +153,20 @@ body {
     justify-content: center;
 }
 
-.view-btn:hover {
+.filter-btn {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.view-btn:hover,
+.filter-btn:hover {
     background: var(--border);
     color: var(--text-primary);
 }
 
-.view-btn.active {
+.view-btn.active,
+.filter-btn.active {
     background: var(--accent);
     color: white;
 }
@@ -533,12 +375,14 @@ body {
     border-color: var(--accent);
 }
 
-.video-card.downloaded {
+.video-card.downloaded,
+.video-card.queued {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.video-card.downloaded:hover {
+.video-card.downloaded:hover,
+.video-card.queued:hover {
     transform: none;
 }
 
@@ -577,8 +421,14 @@ body {
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    background: var(--success);
+    background: var(--success-strong);
     color: white;
+}
+
+/* Distinct from "downloaded" -- same badge otherwise looked identical for
+   both states, so status could only be told apart by reading the text. */
+.status-badge.queued {
+    background: var(--queued);
 }
 
 .youtube-preview-btn {
@@ -721,7 +571,7 @@ body {
 
 .queue-item.downloading {
     border-color: var(--accent);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(160, 106, 47, 0.05);
 }
 
 .queue-item.downloading::before {
@@ -840,14 +690,14 @@ body {
     display: none;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 24px rgba(160, 106, 47, 0.4);
     transition: all 0.3s;
     z-index: 50;
 }
 
 .queue-float-btn:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 12px 32px rgba(160, 106, 47, 0.5);
 }
 
 .queue-float-btn.show {
@@ -875,7 +725,7 @@ body {
     position: absolute;
     top: -8px;
     right: -8px;
-    background: var(--warning);
+    background: var(--warning-strong);
     color: white;
     font-size: 12px;
     font-weight: 700;
@@ -1153,10 +1003,11 @@ body {
 }
 
 @media (max-width: 968px) {
-    .nav-links {
+    .nav-links,
+    .nav-actions {
         display: none;
     }
-    
+
     .mobile-menu-btn {
         display: flex;
     }
@@ -1217,8 +1068,9 @@ body {
         gap: 16px;
         align-items: flex-start;
     }
-    
-    .view-toggle {
+
+    .stats-right {
+        flex-wrap: wrap;
         align-self: flex-end;
     }
     

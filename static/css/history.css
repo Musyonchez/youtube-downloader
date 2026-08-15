@@ -1,0 +1,34 @@
+/* Download History page (docs/09, AUD-26). Reuses app.css's card/grid/
+   badge/pagination/filter-toggle styles; this file only adds what's
+   specific to history: the full-width page container (app.css's
+   .search-area assumes a flex sibling queue-panel this page doesn't have),
+   the failed-state badge/card color, and the history date line. */
+
+.history-container {
+    margin-top: 69px;
+    min-height: calc(100vh - 69px);
+    padding: 40px;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.status-badge.failed {
+    background: var(--warning-strong);
+}
+
+.video-card.failed {
+    border-color: var(--warning-strong);
+}
+
+.video-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+    .history-container {
+        padding: 20px;
+    }
+}

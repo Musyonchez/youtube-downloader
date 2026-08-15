@@ -1,0 +1,17 @@
+{# Favicon + theme-flash (FOUC) prevention. Included in <head>, before the
+   page's stylesheet, on every page. See docs/06-ui-review.md. #}
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+{# Heading-only display font (docs/12-ui-redesign-plan.md step 4) -- applied
+   via --font-heading in variables.css, scoped to h1/h2/h3/.logo-text only.
+   Body copy stays on the system font stack. #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;800;900&display=swap" rel="stylesheet">
+<script>
+    // Set the theme before first paint, so there's no flash of the wrong
+    // theme while the deferred nav.js (loaded at the end of <body>) runs.
+    (function () {
+        var theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+    })();
+</script>

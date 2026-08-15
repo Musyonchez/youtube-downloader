@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube MP3 Downloader - History</title>
+    {% include "partials/head_extras.html" %}
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/nav.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link rel="stylesheet" href="/static/css/history.css">
+</head>
+<body>
+    {% include "partials/navbar.html" %}
+
+    <!-- Download history: everything /api/downloaded has ever recorded,
+         success or failure -- see docs/09, AUD-26. No queue-panel sibling
+         here (unlike app.html), so this uses its own full-width container
+         (history.css) rather than app.css's 70/30-split .app-container. -->
+    <main class="history-container">
+        <div class="search-header">
+            <h1>Download History</h1>
+            <p class="search-subtitle">Everything this app has ever attempted to download.</p>
+        </div>
+
+        <div class="search-bar">
+            <input
+                type="text"
+                id="history-search"
+                aria-label="Filter history by title or channel"
+                placeholder="Filter by title or channel..."
+            >
+        </div>
+
+        <div class="search-stats">
+            <div class="stats-left">
+                <span class="stat">Total: <strong id="history-total">0</strong></span>
+                <span class="stat">Failed: <strong id="history-failed">0</strong></span>
+            </div>
+            <div class="stats-right">
+                <div class="filter-toggle">
+                    <button class="filter-btn active" data-filter="all" onclick="setHistoryFilter('all')">All</button>
+                    <button class="filter-btn" data-filter="success" onclick="setHistoryFilter('success')">Downloaded</button>
+                    <button class="filter-btn" data-filter="failed" onclick="setHistoryFilter('failed')">Failed</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-container" class="results-container">
+            <div id="results-grid" class="results-grid">
+                <div class="empty-state">
+                    <p>Loading history...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <!-- api.js and cards.js (the shared card-builder, docs/13 Track A) are
+         the shared modules this page actually needs (queue/search/ui.js are
+         app-page-specific and pull in DOM ids this page doesn't have).
+         cards.js must load before history.js since it calls createCard().
+         nav.js is shared across every page. -->
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/cards.js"></script>
+    <script src="/static/js/history.js"></script>
+</body>
+</html>

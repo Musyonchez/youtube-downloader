@@ -1,54 +1,21 @@
 // Landing Page JavaScript
-
-// Theme Management
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-}
-
-function updateThemeIcon(theme) {
-    const sunIcons = document.querySelectorAll('.sun-icon');
-    const moonIcons = document.querySelectorAll('.moon-icon');
-    
-    if (theme === 'light') {
-        sunIcons.forEach(icon => icon.style.display = 'none');
-        moonIcons.forEach(icon => icon.style.display = 'block');
-    } else {
-        sunIcons.forEach(icon => icon.style.display = 'block');
-        moonIcons.forEach(icon => icon.style.display = 'none');
-    }
-}
-
-// Initialize theme on page load
-(function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-})();
-
-// Mobile Menu Toggle
-function toggleMobileMenu() {
-    const menu = document.getElementById('mobileMenu');
-    menu.classList.toggle('active');
-}
+// Theme toggle and mobile menu live in nav.js (shared across all pages).
 
 // FAQ Toggle
 function toggleFaq(button) {
     const faqItem = button.parentElement;
     const isActive = faqItem.classList.contains('active');
-    
+
     // Close all FAQs
     document.querySelectorAll('.faq-item').forEach(item => {
         item.classList.remove('active');
+        item.querySelector('.faq-question')?.setAttribute('aria-expanded', 'false');
     });
-    
+
     // Open clicked FAQ if it wasn't active
     if (!isActive) {
         faqItem.classList.add('active');
+        button.setAttribute('aria-expanded', 'true');
     }
 }
 
@@ -73,21 +40,12 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar background on scroll
-let lastScroll = 0;
+// Navbar shadow on scroll -- toggles a class rather than setting inline
+// styles, so the light/dark theme CSS (which sets .navbar's background)
+// isn't overridden by a hardcoded dark color here.
 window.addEventListener('scroll', () => {
     const navbar = document.querySelector('.navbar');
-    const currentScroll = window.pageYOffset;
-    
-    if (currentScroll > 100) {
-        navbar.style.background = 'rgba(10, 10, 15, 0.95)';
-        navbar.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-    } else {
-        navbar.style.background = 'rgba(10, 10, 15, 0.8)';
-        navbar.style.boxShadow = 'none';
-    }
-    
-    lastScroll = currentScroll;
+    navbar.classList.toggle('scrolled', window.pageYOffset > 100);
 });
 
 // Intersection Observer for animations
@@ -105,30 +63,24 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, observerOptions);
 
-// Animate elements on scroll
+// Animate elements on scroll -- skipped entirely when the user has the
+// OS-level reduced-motion preference set (docs/12-ui-redesign-plan.md step
+// 5): content just appears instead of fading/translating in.
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
     const animatedElements = document.querySelectorAll(
-        '.feature-card, .step, .use-case-card, .faq-item'
+        '.feature-card, .step, .use-case-chip, .faq-item'
     );
-    
+
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
         el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
         observer.observe(el);
     });
-});
-
-// Close mobile menu when clicking outside
-document.addEventListener('click', (e) => {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-    
-    if (mobileMenu.classList.contains('active') && 
-        !mobileMenu.contains(e.target) && 
-        !mobileMenuBtn.contains(e.target)) {
-        mobileMenu.classList.remove('active');
-    }
 });
 
 // Prevent default for empty anchor links
