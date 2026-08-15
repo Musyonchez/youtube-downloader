@@ -32,14 +32,13 @@ primary_region = "iad"
   size = "shared-cpu-1x"
   memory = "512mb"
 
-# Two volumes, kept separate so they can be sized/backed up independently:
-# the SQLite library/history DB + config.json (small, important) vs. the
-# actual downloaded MP3s (large, regenerable by re-downloading). Created
-# once via `flyctl volumes create` -- see docs/14-deployment.md.
+# A single volume: Fly Machines only support one mounted volume per
+# machine (confirmed at deploy time -- the original plan of two separate
+# volumes for data vs. downloads doesn't work on this platform). Both the
+# SQLite DB/config.json AND the actual downloaded MP3s live under this one
+# mount instead -- the download_dir setting is pointed at a subdirectory
+# of it post-deploy (see docs/14-deployment.md) rather than the default
+# "./downloads", which would otherwise resolve to ephemeral storage.
 [[mounts]]
   source = "yt_downloader_data"
   destination = "/srv/data"
-
-[[mounts]]
-  source = "yt_downloader_downloads"
-  destination = "/srv/downloads"

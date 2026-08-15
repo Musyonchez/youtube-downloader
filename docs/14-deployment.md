@@ -1,5 +1,12 @@
 # 14 — Deployment (Fly.io) + Repo Setup
 
+**Live at:** https://yt-mp3-downloader.fly.dev (HTTP Basic Auth — credentials
+are a Fly secret, not in this repo; ask whoever deployed it, or read them
+back with `flyctl secrets list --app yt-mp3-downloader` if you have access
+— note that only shows *names*, not values; regenerate with
+`flyctl secrets set APP_PASSWORD=...` if the value itself is needed and
+lost).
+
 ## Repo hardening
 
 - Repo is **public** (required for free branch protection — GitHub only
@@ -41,22 +48,31 @@ Run once, after `flyctl auth login`:
 # Create the app (name is in fly.toml already; this just registers it)
 flyctl apps create yt-mp3-downloader
 
-# Two volumes -- kept separate so they can be sized/backed up
-# independently (the DB+config is small and important; the MP3s are
-# large and regenerable by re-downloading). Match fly.toml's [[mounts]].
-flyctl volumes create yt_downloader_data --region iad --size 1
-flyctl volumes create yt_downloader_downloads --region iad --size 10
+# ONE volume -- Fly Machines only support a single mounted volume per
+# machine (the original plan of separate data/downloads volumes doesn't
+# work on this platform; discovered at first-deploy time). Match
+# fly.toml's single [[mounts]] block. Sized generously since it holds
+# both the DB/config AND every downloaded MP3.
+flyctl volumes create yt_downloader_data --region iad --size 15
 
 # Basic Auth credentials (never committed -- Fly secrets only)
 flyctl secrets set APP_USERNAME=<choose one> APP_PASSWORD=<choose a strong one>
 
 # First deploy
 flyctl deploy --remote-only
+
+# One-time post-deploy step: the app's default download_dir ("./downloads")
+# resolves to ephemeral container storage, not the volume. Point it at a
+# subdirectory of the mounted volume instead, using the app's own existing
+# config API (no code change needed -- download_dir has always been
+# user-configurable):
+curl -u "<username>:<password>" -X POST -H "Content-Type: application/json" \
+  -d '{"download_dir": "/srv/data/downloads"}' \
+  https://yt-mp3-downloader.fly.dev/api/config
 ```
 
-Adjust `--size` (GB) for the downloads volume based on how large the
-library is expected to get; it can be extended later
-(`flyctl volumes extend`).
+Adjust `--size` (GB) based on how large the library is expected to get;
+it can be extended later without downtime (`flyctl volumes extend`).
 
 ## Ongoing deploys (CD)
 
