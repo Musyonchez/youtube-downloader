@@ -196,14 +196,14 @@ async def login_submit(
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_form(request: Request):
-    """Render the register page -- but only while registration is open
-    (no account created yet). This GET-time check is UX only; the real
-    security boundary is the re-check in register_submit below."""
+    """Render the register page -- showing the form only while registration
+    is open (no account created yet), a "closed" message otherwise. This
+    GET-time check is UX only; the real security boundary is the re-check
+    in register_submit below."""
     if request.session.get("user"):
         return RedirectResponse("/app/name", status_code=303)
-    if auth_storage.count_users() > 0:
-        return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse(request, "register.html")
+    closed = auth_storage.count_users() > 0
+    return templates.TemplateResponse(request, "register.html", {"closed": closed})
 
 
 @app.post("/register")

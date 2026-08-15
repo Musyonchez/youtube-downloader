@@ -7,6 +7,8 @@ fresh client per test too here, since a shared module-level client would
 leak session cookies between tests the way test_api_routes.py's stateless
 routes never had to worry about.
 """
+import sqlite3
+
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -58,14 +60,45 @@ def test_register_refused_when_already_closed_even_via_direct_post(tmp_path, mon
     assert "session" not in resp.cookies
 
 
-def test_register_get_redirects_to_login_when_closed(tmp_path, monkeypatch):
+def test_register_race_condition_loser_gets_403_and_no_session(tmp_path, monkeypatch):
+    """The IntegrityError backstop (docs/15) end-to-end: two requests can
+    both pass register_submit's count_users() == 0 check before either
+    commits. test_db.py's test_users_duplicate_username_rejected already
+    covers the raw IntegrityError at the storage layer; this simulates the
+    actual race by making create_user raise it even though the route's own
+    pre-check saw zero users, and confirms register_submit maps that to a
+    403 with no session -- not a 500, and not a false "you're registered"."""
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    assert storage.count_users() == 0
+
+    def raise_integrity_error(*args, **kwargs):
+        raise sqlite3.IntegrityError("UNIQUE constraint failed: users.username")
+
+    monkeypatch.setattr(storage, "create_user", raise_integrity_error)
+
+    resp = client.post(
+        "/register", data={"username": "alice", "password": "whatever1"}, follow_redirects=False
+    )
+
+    assert resp.status_code == 403
+    assert storage.count_users() == 0
+    assert storage.get_user("alice") is None
+    assert "session" not in resp.cookies
+
+
+def test_register_get_shows_closed_message_when_already_registered(tmp_path, monkeypatch):
+    """Renders the template's `closed` branch (not a redirect) -- a more
+    informative dead end than silently bouncing to /login, and the reason
+    that branch exists in register.html at all (it was previously dead
+    code -- this route is the only thing that sets it)."""
     client, storage = isolated_client(tmp_path, monkeypatch)
     storage.create_user("existing", "pbkdf2_sha256$260000$c2FsdA==$aGFzaA==")
 
-    resp = client.get("/register", follow_redirects=False)
+    resp = client.get("/register")
 
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/login"
+    assert resp.status_code == 200
+    assert "Registration is closed" in resp.text
+    assert 'action="/register"' not in resp.text  # the form itself must not render
 
 
 def test_login_wrong_password_rejected(tmp_path, monkeypatch):
