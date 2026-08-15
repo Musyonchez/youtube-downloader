@@ -2,18 +2,19 @@
 
 [![CI](https://github.com/Musyonchez/youtube-downloader/actions/workflows/ci.yml/badge.svg)](https://github.com/Musyonchez/youtube-downloader/actions/workflows/ci.yml)
 
-A modern, professional SaaS-quality web application for downloading YouTube videos as high-quality MP3 files. Beautiful UI, real-time progress tracking, and accessible from any device on your network!
+A self-hosted web app for turning YouTube videos into high-quality MP3s — search, queue, and download from your phone while the actual work happens on your own server. Real-time progress, a persistent library with full download history, and a warm, distinctive UI instead of another generic dashboard template.
 
 ## Features
 
-### 🎨 Modern UI/UX
+### 🎨 UI/UX
 
-- **Professional Landing Page**: SaaS-quality design with gradients and smooth animations
+- **A design that isn't a template**: a copper/teal "warm analog" palette (audio-equipment inspired), a distinctive heading typeface, and a real motion pass — not the default indigo-gradient look most AI-generated UIs ship with
 - **Light/Dark Theme Toggle**: Seamless theme switching with localStorage persistence
 - **Split-Screen Layout**: 70% search results, 30% collapsible queue panel
 - **Grid & Compact Views**: Toggle between card grid or compact list view
-- **Skeleton Loaders**: Beautiful shimmer effects while searching
-- **Responsive Design**: Perfect on desktop, tablet, and mobile
+- **Skeleton Loaders**: Shimmer effects while searching
+- **Responsive Design**: Desktop, tablet, and mobile
+- **Reduced-motion support**: respects your OS-level `prefers-reduced-motion` setting throughout
 
 ### 🔍 Three Search Modes
 
@@ -34,8 +35,9 @@ A modern, professional SaaS-quality web application for downloading YouTube vide
 
 - **320kbps MP3** (configurable: 128/192/256/320 kbps)
 - **Automatic Metadata**: Artist, title, and album tags
-- **Clean Filenames**: "Artist - Title.mp3" format
-- **Download History**: Track all 655+ downloads in `downloads.db` (SQLite)
+- **Collision-safe filenames**: "Artist - Title [video_id].mp3" — two videos with the same title never overwrite each other
+- **Full Download History**: every attempt (success *and* failure) is recorded in SQLite and browsable on the `/history` page, with a one-click retry for failed downloads
+- **Results filter**: toggle search results between All / Downloaded / Not Downloaded, persisted across sessions
 
 ### ⚡ User Experience
 
@@ -187,6 +189,7 @@ The server will start and display:
 youtube-downloader/
 ├── app/                      # Python package -- run as `python -m app.main`
 │   ├── main.py               # FastAPI app instance, page routes, /ws
+│   ├── auth.py                # Optional HTTP Basic Auth (opt-in via env vars, see docs/14)
 │   ├── ws_manager.py         # WebSocket connection manager
 │   ├── utils.py              # Pure helpers (filenames, durations, URL parsing)
 │   ├── api/
@@ -203,10 +206,12 @@ youtube-downloader/
 │   └── downloads.db          # Download queue + history (SQLite)
 ├── static/
 │   ├── css/
+│   │   ├── variables.css    # Shared design tokens (palette, fonts, motion) -- see docs/12
 │   │   ├── landing.css      # Landing page styles
 │   │   ├── app.css          # App split-screen layout
 │   │   └── history.css      # Download history page
 │   └── js/
+│       ├── cards.js         # Shared video-card builder (search + history pages) -- see docs/13
 │       ├── landing.js       # Landing page interactions
 │       ├── history.js       # Download history page (self-contained)
 │       └── (app logic, split into state.js, api.js, ui.js,
@@ -219,11 +224,14 @@ youtube-downloader/
 │   ├── download_temp.py
 │   └── rename_bible.py
 ├── tests/                   # pytest suite
+├── docs/                    # Audits, redesign history, deployment runbook -- see docs/README.md
 ├── run.sh                   # Startup script (Linux/macOS/Git Bash)
 ├── run.ps1                  # Startup script (native Windows PowerShell)
 ├── Makefile                 # Development commands
 ├── requirements.txt         # Production dependencies
 ├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8, pytest)
+├── fly.toml                 # Fly.io deploy config -- see docs/14-deployment.md
+├── CONTRIBUTING.md           # Branch/PR workflow (master is branch-protected)
 └── downloads/                # MP3 output directory
 ```
 
@@ -361,7 +369,7 @@ the branch → PR → squash-merge workflow.
 ## Advantages Over Desktop Apps
 
 ✅ **Access anywhere**: Phone, tablet, laptop - same WiFi, same app  
-✅ **Modern UI**: SaaS-quality design with smooth animations  
+✅ **Distinctive UI**: a real design pass, not the generic default  
 ✅ **Real-time updates**: See download progress live  
 ✅ **No installation**: Works in any browser  
 ✅ **Remote control**: Queue from bed, download on PC  
@@ -447,9 +455,8 @@ This tool is for personal use only. Downloading copyrighted content without perm
 
 ### Storage
 
-- **JSON Files**: Git-friendly, human-readable
-- **No Database**: Simple file-based storage
-- **Download History**: Track 655+ songs efficiently
+- **SQLite** (`data/downloads.db`): the download queue and full history — indexed lookups instead of scanning a flat file, handles a large, growing library without slowing down
+- **JSON** (`data/config.json`): user settings only (audio quality, download directory) — small, rarely written, no query needs, so a database would be pure overhead there
 
 ### Features
 
@@ -466,7 +473,7 @@ Free to use for personal projects.
 
 ### Landing Page
 
-- Modern gradient hero section
+- Copper/teal hero with a realistic search-results preview and a waveform accent
 - Three search mode options
 - Light/dark theme toggle
 
@@ -487,9 +494,20 @@ Free to use for personal projects.
 
 ## Changelog
 
+### v3.0.0
+
+- ✨ Full audit pass: concurrency-safe downloads, durable/retryable failure
+  records, batched status lookups, `/history` page, and a large accessibility
+  pass (see `docs/09`)
+- ✨ Complete visual redesign: warm copper/teal palette, distinctive
+  typography, reduced-motion support, a real landing-page identity instead
+  of a generic template (see `docs/10`–`13`)
+- ✨ HTTP Basic Auth (opt-in via env vars) for deploying outside a trusted LAN
+- ✨ Fly.io deployment support with persistent volumes and CD
+
 ### v2.0.0 (December 2025)
 
-- ✨ Complete UI redesign with SaaS-quality landing page
+- ✨ Complete UI redesign with a split-screen landing page
 - ✨ Split-screen layout (70% results, 30% queue)
 - ✨ Light/dark theme toggle with persistence
 - ✨ Grid/compact view toggle for search results
@@ -513,5 +531,3 @@ Free to use for personal projects.
 ---
 
 Made with ❤️ for music lovers who want to build their own library
-
-**655 songs downloaded and counting!** 🎵
