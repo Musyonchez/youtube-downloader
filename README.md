@@ -1,5 +1,7 @@
 # YouTube MP3 Downloader (Web App)
 
+[![CI](https://github.com/Musyonchez/youtube-downloader/actions/workflows/ci.yml/badge.svg)](https://github.com/Musyonchez/youtube-downloader/actions/workflows/ci.yml)
+
 A modern, professional SaaS-quality web application for downloading YouTube videos as high-quality MP3 files. Beautiful UI, real-time progress tracking, and accessible from any device on your network!
 
 ## Features
@@ -307,6 +309,20 @@ docker compose up --build
 ```
 
 This builds the app with FFmpeg included and mounts `downloads/` and `data/` (containing `config.json` and `downloads.db`) from the host so your library and settings persist across container restarts. The app is then available at `http://localhost:8000` same as running it directly.
+
+### Deploying to Fly.io
+
+This app was built assuming LAN-only access with no login. A public Fly.io
+deploy needs HTTP Basic Auth turned on first (`APP_USERNAME`/`APP_PASSWORD`
+as Fly secrets — see [docs/14-deployment.md](docs/14-deployment.md) for
+the full runbook, including persistent volumes and the CD pipeline).
+Local/LAN use is unaffected either way — auth only activates when those
+env vars are set.
+
+### Contributing
+
+`master` is branch-protected — see [CONTRIBUTING.md](CONTRIBUTING.md) for
+the branch → PR → squash-merge workflow.
 
 ## Use Cases
 

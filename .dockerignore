@@ -10,3 +10,7 @@ docs/
 tests/
 scripts/
 .github/
+
+# Planned browser extension (docs/14-deployment.md) -- lives as a sibling
+# top-level directory in this same repo; never part of the server image.
+extension/

@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.api.routes import router
+from app.auth import BasicAuthMiddleware
 from app.ws_manager import manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -19,6 +20,11 @@ app = FastAPI(
     description="Web-based YouTube audio downloader with thumbnail preview",
     version="2.0.0"
 )
+
+# Basic Auth gate -- no-op locally/on a LAN (see app/auth.py); only active
+# when APP_USERNAME/APP_PASSWORD are set, which docs/14's deploy does.
+# Added first (outermost) so it runs before CORS/routing on every request.
+app.add_middleware(BasicAuthMiddleware)
 
 # CORS middleware (allow all for local development)
 app.add_middleware(
