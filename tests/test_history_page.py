@@ -4,12 +4,14 @@ from fastapi.testclient import TestClient
 from app.api import routes
 from app.main import app
 from app.storage.storage import Storage
+from tests.conftest import log_in_test_client
 
 client = TestClient(app)
 
 
 def test_history_page_renders(tmp_path, monkeypatch):
     monkeypatch.setattr(routes, "storage", Storage(str(tmp_path)))
+    log_in_test_client(client, tmp_path, monkeypatch)
     resp = client.get("/history")
     assert resp.status_code == 200
     assert "Download History" in resp.text
@@ -18,6 +20,7 @@ def test_history_page_renders(tmp_path, monkeypatch):
 
 def test_history_navbar_link_marked_active(tmp_path, monkeypatch):
     monkeypatch.setattr(routes, "storage", Storage(str(tmp_path)))
+    log_in_test_client(client, tmp_path, monkeypatch)
     resp = client.get("/history")
     assert 'href="/history" class="active"' in resp.text
 
@@ -27,6 +30,7 @@ def test_downloaded_endpoint_includes_both_success_and_failure(tmp_path, monkeyp
     are actually visible through the same endpoint the page reads from."""
     storage = Storage(str(tmp_path))
     monkeypatch.setattr(routes, "storage", storage)
+    log_in_test_client(client, tmp_path, monkeypatch)
 
     video = {
         "video_id": "abc123",

@@ -128,3 +128,18 @@ class Storage:
         up to 2 per id. Use this for search/playlist results (dozens to
         hundreds of items) instead of looping get_item_status()."""
         return self.db.get_statuses(video_ids)
+
+    # User operations (docs/15)
+    def create_user(self, username: str, password_hash: str):
+        """Create a new user account. Raises sqlite3.IntegrityError if the
+        username already exists -- see db.create_user's docstring."""
+        self.db.create_user(username, password_hash, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    def get_user(self, username: str) -> dict | None:
+        """Look up a user by username, or None if it doesn't exist."""
+        return self.db.get_user(username)
+
+    def count_users(self) -> int:
+        """Number of registered accounts -- drives the registration gate
+        (registration is only open while this is 0)."""
+        return self.db.count_users()

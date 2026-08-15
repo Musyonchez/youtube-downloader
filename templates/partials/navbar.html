@@ -2,8 +2,9 @@
    Context variables (all optional):
      active_mode   -- 'name' | 'playlist' | 'url' | 'history' | not set (landing page)
      show_settings -- true on app pages (adds the settings-gear button)
-   See docs/06-ui-review.md for why this is a shared include rather than
-   copy-pasted per page. #}
+   Auth state (docs/15) isn't passed via context -- current_user(request) is
+   a Jinja global registered in app/main.py, called directly below, since
+   `request` is already in scope on every TemplateResponse render. #}
 <nav class="navbar">
     <div class="nav-container">
         <div class="nav-content">
@@ -43,6 +44,18 @@
                     </svg>
                 </button>
                 {% endif %}
+                {% set user = current_user(request) %}
+                {% if user %}
+                <span class="nav-username">{{ user }}</span>
+                <form method="post" action="/logout" class="nav-logout-form">
+                    <button type="submit" class="nav-auth-link nav-logout-btn">Log Out</button>
+                </form>
+                {% else %}
+                <a href="/login" class="nav-auth-link">Log In</a>
+                {% if registration_open() %}
+                <a href="/register" class="nav-auth-link">Register</a>
+                {% endif %}
+                {% endif %}
             </div>
             <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
                 <span></span>
@@ -58,6 +71,18 @@
     <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
     <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
     <a href="/history" onclick="toggleMobileMenu()">History</a>
+    {% set mobile_user = current_user(request) %}
+    {% if mobile_user %}
+    <span class="nav-username">{{ mobile_user }}</span>
+    <form method="post" action="/logout" class="nav-logout-form">
+        <button type="submit" class="nav-auth-link nav-logout-btn">Log Out</button>
+    </form>
+    {% else %}
+    <a href="/login" onclick="toggleMobileMenu()">Log In</a>
+    {% if registration_open() %}
+    <a href="/register" onclick="toggleMobileMenu()">Register</a>
+    {% endif %}
+    {% endif %}
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
         <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"></circle>

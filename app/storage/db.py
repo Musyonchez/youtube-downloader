@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS downloaded (
     file_path TEXT,
     downloaded_at TEXT NOT NULL
 );
+
+-- Single-account auth (docs/15). username is the primary key rather than
+-- an auto-increment id -- there's no other table that references a user
+-- by foreign key, and "first user, then registration closes" means this
+-- table only ever holds one row in practice.
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -161,4 +171,29 @@ class Database:
     def count_downloaded(self) -> int:
         with self._lock:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM downloaded").fetchone()
+            return int(row['n'])
+
+    # User operations (docs/15 -- single-account session auth)
+    def create_user(self, username: str, password_hash: str, created_at: str):
+        """Insert a new user. Deliberately plain INSERT (not INSERT OR
+        REPLACE like library/downloaded use) -- a duplicate username must
+        fail loudly (sqlite3.IntegrityError) rather than silently
+        overwrite an existing account's password hash. Callers are
+        expected to gate on count_users() == 0 first (the actual security
+        boundary); this constraint is the last-resort backstop."""
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                (username, password_hash, created_at),
+            )
+            self._conn.commit()
+
+    def get_user(self, username: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+            return dict(row) if row is not None else None
+
+    def count_users(self) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM users").fetchone()
             return int(row['n'])

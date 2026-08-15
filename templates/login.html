@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube MP3 Downloader - Log In</title>
+    {% include "partials/head_extras.html" %}
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/nav.css">
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    {% include "partials/navbar.html" %}
+
+    <main class="auth-container">
+        <div class="auth-card">
+            <h1>Welcome back</h1>
+            <p class="auth-subtitle">Log in to manage your download queue.</p>
+
+            {% if error %}
+            <div class="auth-error" role="alert">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/login">
+                <input type="hidden" name="next" value="{{ next }}">
+                <div class="auth-field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+                </div>
+                <div class="auth-field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn-primary auth-submit">Log In</button>
+            </form>
+
+            <p class="auth-footer">
+                No account yet? <a href="/register">Register</a>
+            </p>
+        </div>
+    </main>
+
+    <script src="/static/js/nav.js"></script>
+</body>
+</html>
