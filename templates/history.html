@@ -57,11 +57,14 @@
 
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-    <!-- state.js/api.js are the shared modules this page actually needs
-         (queue/search/ui.js are app-page-specific and pull in DOM ids this
-         page doesn't have). nav.js is shared across every page. -->
+    <!-- api.js and cards.js (the shared card-builder, docs/13 Track A) are
+         the shared modules this page actually needs (queue/search/ui.js are
+         app-page-specific and pull in DOM ids this page doesn't have).
+         cards.js must load before history.js since it calls createCard().
+         nav.js is shared across every page. -->
     <script src="/static/js/nav.js"></script>
     <script src="/static/js/api.js"></script>
+    <script src="/static/js/cards.js"></script>
     <script src="/static/js/history.js"></script>
 </body>
 </html>

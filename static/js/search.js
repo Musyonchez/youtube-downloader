@@ -209,98 +209,39 @@ function changePage(direction) {
     document.getElementById('results-grid').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Create Video Card
+// Create Video Card -- thin wrapper around cards.js's shared builder
+// (docs/13 Track A), parameterized for search results specifically.
 function createVideoCard(video) {
-    const card = document.createElement('div');
-    card.className = 'video-card';
-    card.dataset.videoId = video.video_id;
-
-    if (video.status === 'downloaded') {
-        card.classList.add('downloaded');
-    } else if (video.status === 'queued') {
+    return createCard(video, {
         // Queued cards have no click target (no Add button, nothing else
         // handles a card click) -- mark them inert the same way downloaded
         // cards are, instead of leaving a hover/pointer affordance that leads
-        // nowhere.
-        card.classList.add('queued');
-    }
-
-    // Thumbnail
-    const thumbnailContainer = document.createElement('div');
-    thumbnailContainer.className = 'thumbnail-container';
-
-    const thumbnail = document.createElement('img');
-    thumbnail.className = 'thumbnail';
-    thumbnail.alt = video.title;
-    thumbnail.loading = 'lazy';
-
-    if (video.thumbnail) {
-        thumbnail.src = video.thumbnail;
-        thumbnail.onerror = function() {
-            this.style.display = 'none';
-            thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        };
-    }
-
-    const durationBadge = document.createElement('div');
-    durationBadge.className = 'duration-badge';
-    durationBadge.textContent = video.duration;
-
-    thumbnailContainer.appendChild(thumbnail);
-    thumbnailContainer.appendChild(durationBadge);
-
-    // YouTube preview button
-    const youtubeBtn = document.createElement('a');
-    youtubeBtn.className = 'youtube-preview-btn';
-    youtubeBtn.href = video.url;
-    youtubeBtn.target = '_blank';
-    youtubeBtn.rel = 'noopener noreferrer';
-    youtubeBtn.title = 'Preview on YouTube';
-    youtubeBtn.setAttribute('aria-label', 'Preview on YouTube');
-    youtubeBtn.innerHTML = '▶';
-    youtubeBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent card click when clicking preview
-    };
-    thumbnailContainer.appendChild(youtubeBtn);
-
-    // Status badge
-    if (video.status && video.status !== 'new') {
-        const statusBadge = document.createElement('div');
-        statusBadge.className = video.status === 'downloaded' ? 'status-badge' : 'status-badge queued';
-        statusBadge.textContent = video.status === 'downloaded' ? 'Downloaded' : 'Queued';
-        thumbnailContainer.appendChild(statusBadge);
-    }
-
-    // Info
-    const info = document.createElement('div');
-    info.className = 'video-info';
-
-    const title = document.createElement('div');
-    title.className = 'video-title';
-    title.textContent = video.title;
-    title.title = video.title;
-
-    const channel = document.createElement('div');
-    channel.className = 'video-channel';
-    channel.textContent = video.channel;
-
-    info.appendChild(title);
-    info.appendChild(channel);
-
-    // Add to queue button
-    if (video.status === 'new') {
-        const addBtn = document.createElement('button');
-        addBtn.className = 'add-to-queue-btn';
-        addBtn.textContent = 'Add to Queue';
-        addBtn.onclick = (e) => {
-            e.stopPropagation();
-            addSingleToQueue(video);
-        };
-        info.appendChild(addBtn);
-    }
-
-    card.appendChild(thumbnailContainer);
-    card.appendChild(info);
-
-    return card;
+        // nowhere (docs/09 AUD-13).
+        cardClass: (v) => {
+            if (v.status === 'downloaded') return 'downloaded';
+            if (v.status === 'queued') return 'queued';
+            return null;
+        },
+        showDuration: true,
+        // docs/09 AUD-06: distinct badge class for 'queued' vs 'downloaded';
+        // 'new' results get no badge at all.
+        badge: (v) => {
+            if (!v.status || v.status === 'new') return null;
+            return v.status === 'downloaded'
+                ? { text: 'Downloaded', extraClass: null }
+                : { text: 'Queued', extraClass: 'queued' };
+        },
+        dateField: null,
+        actionButton: (v) => {
+            if (v.status !== 'new') return null;
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-to-queue-btn';
+            addBtn.textContent = 'Add to Queue';
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                addSingleToQueue(v);
+            };
+            return addBtn;
+        },
+    });
 }

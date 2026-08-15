@@ -111,80 +111,33 @@ function changeHistoryPage(direction) {
     document.getElementById('results-grid').scrollIntoView({ behavior: 'smooth' });
 }
 
+// Thin wrapper around cards.js's shared builder (docs/13 Track A),
+// parameterized for history items specifically.
 function createHistoryCard(item) {
-    const card = document.createElement('div');
-    card.className = item.success ? 'video-card downloaded' : 'video-card failed';
-    card.dataset.videoId = item.video_id;
-
-    const thumbnailContainer = document.createElement('div');
-    thumbnailContainer.className = 'thumbnail-container';
-
-    const thumbnail = document.createElement('img');
-    thumbnail.className = 'thumbnail';
-    thumbnail.alt = item.title;
-    thumbnail.loading = 'lazy';
-    if (item.thumbnail) {
-        thumbnail.src = item.thumbnail;
-        thumbnail.onerror = function () {
-            this.style.display = 'none';
-            thumbnailContainer.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        };
-    }
-    thumbnailContainer.appendChild(thumbnail);
-
-    const statusBadge = document.createElement('div');
-    statusBadge.className = item.success ? 'status-badge' : 'status-badge failed';
-    statusBadge.textContent = item.success ? 'Downloaded' : 'Failed';
-    thumbnailContainer.appendChild(statusBadge);
-
-    const youtubeBtn = document.createElement('a');
-    youtubeBtn.className = 'youtube-preview-btn';
-    youtubeBtn.href = item.url;
-    youtubeBtn.target = '_blank';
-    youtubeBtn.rel = 'noopener noreferrer';
-    youtubeBtn.title = 'Preview on YouTube';
-    youtubeBtn.setAttribute('aria-label', 'Preview on YouTube');
-    youtubeBtn.innerHTML = '▶';
-    youtubeBtn.onclick = (e) => e.stopPropagation();
-    thumbnailContainer.appendChild(youtubeBtn);
-
-    const info = document.createElement('div');
-    info.className = 'video-info';
-
-    const title = document.createElement('div');
-    title.className = 'video-title';
-    title.textContent = item.title;
-    title.title = item.title;
-
-    const channel = document.createElement('div');
-    channel.className = 'video-channel';
-    channel.textContent = item.channel;
-
-    const date = document.createElement('div');
-    date.className = 'video-date';
-    date.textContent = item.downloaded_at;
-
-    info.appendChild(title);
-    info.appendChild(channel);
-    info.appendChild(date);
-
-    if (!item.success) {
-        // AUD-02 made failures durable specifically so they could be
-        // retried -- this closes that loop instead of leaving the failure
-        // record purely informational.
-        const retryBtn = document.createElement('button');
-        retryBtn.className = 'add-to-queue-btn';
-        retryBtn.textContent = 'Retry';
-        retryBtn.onclick = (e) => {
-            e.stopPropagation();
-            retryDownload(item, retryBtn);
-        };
-        info.appendChild(retryBtn);
-    }
-
-    card.appendChild(thumbnailContainer);
-    card.appendChild(info);
-    return card;
+    return createCard(item, {
+        cardClass: (i) => (i.success ? 'downloaded' : 'failed'),
+        showDuration: false,
+        // docs/09 AUD-26: distinct badge class for 'failed' vs 'downloaded'.
+        // Unlike search results, history cards always show a badge.
+        badge: (i) => (i.success
+            ? { text: 'Downloaded', extraClass: null }
+            : { text: 'Failed', extraClass: 'failed' }),
+        dateField: 'downloaded_at',
+        actionButton: (i) => {
+            if (i.success) return null;
+            // AUD-02 made failures durable specifically so they could be
+            // retried -- this closes that loop instead of leaving the
+            // failure record purely informational.
+            const retryBtn = document.createElement('button');
+            retryBtn.className = 'add-to-queue-btn';
+            retryBtn.textContent = 'Retry';
+            retryBtn.onclick = (e) => {
+                e.stopPropagation();
+                retryDownload(i, retryBtn);
+            };
+            return retryBtn;
+        },
+    });
 }
 
 async function retryDownload(item, btn) {

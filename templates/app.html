@@ -186,13 +186,15 @@
     <!-- Plain scripts sharing global scope (no bundler/module system by
          design -- see docs/03-full-improvement-plan.md). nav.js is shared
          with the landing page (docs/06-ui-review.md); state.js must load
-         before the rest since they reference its variables; main.js must
-         load last since its DOMContentLoaded handler calls functions from
-         all the others. -->
+         before the rest since they reference its variables; cards.js (the
+         shared card-builder, docs/13 Track A) must load before search.js
+         since it calls createCard(); main.js must load last since its
+         DOMContentLoaded handler calls functions from all the others. -->
     <script src="/static/js/nav.js"></script>
     <script src="/static/js/state.js"></script>
     <script src="/static/js/api.js"></script>
     <script src="/static/js/ui.js"></script>
+    <script src="/static/js/cards.js"></script>
     <script src="/static/js/search.js"></script>
     <script src="/static/js/queue.js"></script>
     <script src="/static/js/websocket.js"></script>
