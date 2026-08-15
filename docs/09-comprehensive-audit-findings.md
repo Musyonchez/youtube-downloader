@@ -71,7 +71,7 @@ but "safe to keep growing the library on" — yes, once AUD-01/02/03/04 land.
 | AUD-22 | P2 | Backend | Filename collision (same channel+title, different `video_id`) silently reuses the first file, second video never downloaded | `app/services/downloader.py:88-96` | Key filename check on video_id, not just text | Deferred |
 | AUD-23 | P3 | Perf | Unthrottled WebSocket progress broadcasts (fires on nearly every yt-dlp chunk) | `app/services/downloader.py:50-68` | Throttle to ≥1% delta or ~250ms | Deferred |
 | AUD-24 | P3 | Security | Loose URL validation (`'youtube.com' in url`) allows SSRF-flavored probing via yt-dlp's generic extractor | `app/services/search.py:141-149` | Proper host allowlist via `urlsplit` | Deferred |
-| AUD-25 | P4 | Architecture | Dead code: `download_batch`, `test_download`/`test_search()` `__main__` blocks, duplicate of `download_task`'s loop | `app/services/downloader.py:183-233`, `app/services/search.py:152-173` | Remove | Deferred |
+| AUD-25 | P4 | Architecture | Dead code: `download_batch`, `test_download`/`test_search()` `__main__` blocks, duplicate of `download_task`'s loop | `app/services/downloader.py:183-233`, `app/services/search.py:152-173` | Remove | **Fixed** (also added `logger.exception` calls to `search.py`'s except blocks while in there) |
 | AUD-26 | P3 | Product | `GET /api/downloaded` (download history) has a working backend, zero UI | `app/api/routes.py:212-216` | New history view (real feature, not a quick fix) | Deferred — tracked as a future feature |
 | AUD-27 | P3 | UI/UX | FAQ accordion buttons don't expose `aria-expanded` | `templates/index.html:232-297`, `static/js/landing.js:5-18` | Add ARIA state | Deferred |
 | AUD-28 | P4 | Perf | `renderQueue()` fully rebuilds the DOM every 1s poll regardless of change | `static/js/queue.js:2-34` | Diff before rebuild | Deferred |
@@ -85,8 +85,8 @@ new feature) and are left for a future targeted pass, same pattern as prior docs
 
 ## Roadmap
 
-- **Immediate (this pass):** AUD-01 through AUD-17, AUD-19 — done, see commit.
+- **Done (commit f9975e2):** AUD-01 through AUD-17, AUD-19, AUD-25.
 - **Soon:** AUD-20 (route-level tests), AUD-21/22 (filename edge cases), AUD-24 (URL allowlist).
-- **Later:** AUD-18 (routes.py → services split), AUD-23 (WS throttle), AUD-25 (dead code cleanup).
+- **Later:** AUD-18 (routes.py → services split), AUD-23 (WS throttle).
 - **Future feature:** AUD-26 (download history UI) — this is a real feature addition,
   not a bug fix; worth its own doc when prioritized.
