@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.api import routes
 from app.main import app
 from app.storage.storage import Storage
+from tests.conftest import log_in_test_client
 
 client = TestClient(app)
 
@@ -27,6 +28,9 @@ VIDEO = {
 def isolated_storage(tmp_path, monkeypatch):
     storage = Storage(str(tmp_path))
     monkeypatch.setattr(routes, "storage", storage)
+    # These routes are all session-protected now (docs/15) -- see
+    # tests/conftest.py's log_in_test_client for why.
+    log_in_test_client(client, tmp_path, monkeypatch)
     return storage
 
 

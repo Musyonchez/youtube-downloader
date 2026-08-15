@@ -191,3 +191,51 @@
     align-self: center;
     margin-top: 8px;
 }
+
+/* Auth state (docs/15): Login/Register links or username + Logout,
+   styled to match .nav-links a exactly so they read as part of the same
+   link group rather than bolted on. */
+.nav-auth-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.nav-auth-link:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.nav-username {
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 8px 4px;
+    font-size: 14px;
+}
+
+/* Logout is a <form><button> (POST, not a GET link -- see navbar.html) but
+   must look identical to the Login/Register nav links, not a default
+   browser button. */
+.nav-logout-form {
+    display: inline-flex;
+}
+
+.nav-logout-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.mobile-menu .nav-username {
+    text-align: center;
+    padding: 12px;
+}
+
+.mobile-menu .nav-logout-form {
+    justify-content: center;
+}

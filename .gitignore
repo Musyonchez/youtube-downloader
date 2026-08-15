@@ -35,6 +35,9 @@ ENV/
 tests/e2e/node_modules/
 tests/e2e/test-results/
 tests/e2e/playwright-report/
+# Session cookie captured by global-setup.js (docs/15) -- regenerated fresh
+# on every test run, never something to commit.
+tests/e2e/storageState.json
 
 # IDE
 .vscode/

@@ -1,4 +1,6 @@
 """Tests for app/storage/db.py's SQLite-backed library/downloaded storage."""
+import sqlite3
+
 import pytest
 
 from app.storage.db import Database
@@ -117,3 +119,34 @@ def test_counts(db):
     )
     assert db.count_library() == 1
     assert db.count_downloaded() == 1
+
+
+# User operations (docs/15 -- single-account session auth)
+
+def test_users_create_and_get(db):
+    db.create_user("alice", "pbkdf2_sha256$260000$salt$hash", created_at="2026-01-01 00:00:00")
+    user = db.get_user("alice")
+    assert user is not None
+    assert user["username"] == "alice"
+    assert user["password_hash"] == "pbkdf2_sha256$260000$salt$hash"
+
+
+def test_users_get_nonexistent_returns_none(db):
+    assert db.get_user("nobody") is None
+
+
+def test_users_count(db):
+    assert db.count_users() == 0
+    db.create_user("alice", "hash1", created_at="2026-01-01 00:00:00")
+    assert db.count_users() == 1
+
+
+def test_users_duplicate_username_rejected(db):
+    """The actual security boundary for "registration is first-user-only"
+    -- a second create_user() for the same username must fail loudly, not
+    silently overwrite the existing account's password hash."""
+    db.create_user("alice", "hash1", created_at="2026-01-01 00:00:00")
+    with pytest.raises(sqlite3.IntegrityError):
+        db.create_user("alice", "hash2", created_at="2026-01-02 00:00:00")
+    # Original hash must be untouched by the rejected attempt.
+    assert db.get_user("alice")["password_hash"] == "hash1"

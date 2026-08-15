@@ -1,11 +1,12 @@
 # 14 — Deployment (Fly.io) + Repo Setup
 
-**Live at:** https://yt-mp3-downloader.fly.dev (HTTP Basic Auth — credentials
-are a Fly secret, not in this repo; ask whoever deployed it, or read them
-back with `flyctl secrets list --app yt-mp3-downloader` if you have access
-— note that only shows *names*, not values; regenerate with
-`flyctl secrets set APP_PASSWORD=...` if the value itself is needed and
-lost).
+**Live at:** https://yt-mp3-downloader.fly.dev (session-cookie login — see
+[15-auth-plan.md](15-auth-plan.md). The one account is created by visiting
+`/register` once, immediately after first deploy; `SECRET_KEY` (signs the
+session cookie) is a Fly secret, not in this repo — read its *name* back
+with `flyctl secrets list --app yt-mp3-downloader` if needed, or rotate it
+with `flyctl secrets set SECRET_KEY=...` (rotating invalidates all existing
+sessions, which is fine — everyone just logs in again).
 
 ## Repo hardening
 
@@ -24,20 +25,27 @@ This app was built with **no authentication**, on the explicit assumption
 it's only reachable on a trusted LAN (a reviewed decision from the
 earlier audit, docs/09). Deploying to Fly.io puts it on the public
 internet by default, which breaks that assumption — anyone with the URL
-could search/queue/download through it. `app/auth.py` adds an HTTP Basic
-Auth gate that:
+could search/queue/download through it. `app/session_auth.py` adds a
+session-cookie login gate (docs/15) that:
 
-- Is a **no-op locally** — it only activates when both `APP_USERNAME` and
-  `APP_PASSWORD` are set in the environment. Local/LAN use (`run.sh`/
-  `run.ps1`) is completely unaffected — no env vars set, no auth prompt,
-  same zero-config experience as before.
+- Is effectively **zero-config locally** — `SECRET_KEY` (which signs the
+  session cookie) generates a random value at process startup if unset, so
+  `run.sh`/`run.ps1`/pytest all work with no env vars. The only cost is
+  that sessions don't survive a restart without a persistent `SECRET_KEY`
+  — a non-issue for local/LAN use, but production must set the Fly secret
+  (below) or every deploy silently logs everyone out.
 - Gates **both HTTP and WebSocket** (`/ws`) — a plain `BaseHTTPMiddleware`
   only sees HTTP, so this is a pure ASGI middleware instead (see the
-  module docstring in `app/auth.py`).
-- Exempts `/health` unconditionally — Fly's health check has no
-  credentials, and the deploy would never go healthy otherwise.
+  module docstring in `app/session_auth.py`).
+- Exempts `/`, `/login`, `/register`, `/logout`, `/health`, and `/static/*`
+  unconditionally — `/health` because Fly's health check has no session,
+  and the deploy would never go healthy otherwise; the rest because they
+  need to be reachable *without* a session by definition.
+- Registration is **first-user-only, then closed** (docs/15) — there's no
+  shared secret to generate/rotate/hand out; whoever visits `/register`
+  first becomes the one account.
 
-Set the credentials as Fly secrets (never in `fly.toml`, which is
+Set `SECRET_KEY` as a Fly secret (never in `fly.toml`, which is
 committed): see the runbook below.
 
 ## First-time Fly.io setup
@@ -55,18 +63,30 @@ flyctl apps create yt-mp3-downloader
 # both the DB/config AND every downloaded MP3.
 flyctl volumes create yt_downloader_data --region iad --size 15
 
-# Basic Auth credentials (never committed -- Fly secrets only)
-flyctl secrets set APP_USERNAME=<choose one> APP_PASSWORD=<choose a strong one>
+# SECRET_KEY signs the session cookie (never committed -- Fly secrets only).
+# Generate a real random value, don't type one by hand:
+flyctl secrets set SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 
 # First deploy
 flyctl deploy --remote-only
 
-# One-time post-deploy step: the app's default download_dir ("./downloads")
+# One-time, TIME-SENSITIVE post-deploy step: registration is open to
+# whoever visits /register first (docs/15) -- there's no shared secret to
+# gate it, so the deployer needs to win this race immediately after the
+# app goes healthy, not leave it sitting open. Visit
+# https://yt-mp3-downloader.fly.dev/register in a browser and create the
+# account right away; after that submission, the route refuses everyone
+# else server-side (not just hidden in the UI).
+#
+# Then, now logged in: the app's default download_dir ("./downloads")
 # resolves to ephemeral container storage, not the volume. Point it at a
 # subdirectory of the mounted volume instead, using the app's own existing
 # config API (no code change needed -- download_dir has always been
-# user-configurable):
-curl -u "<username>:<password>" -X POST -H "Content-Type: application/json" \
+# user-configurable). Grab the session cookie from the browser you just
+# registered with (devtools -> Application -> Cookies) and pass it here,
+# or just use the Settings modal in the UI instead of curl:
+curl -b "session=<cookie value from the browser you just registered with>" \
+  -X POST -H "Content-Type: application/json" \
   -d '{"download_dir": "/srv/data/downloads"}' \
   https://yt-mp3-downloader.fly.dev/api/config
 ```

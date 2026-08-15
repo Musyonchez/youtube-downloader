@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube MP3 Downloader - Register</title>
+    {% include "partials/head_extras.html" %}
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/nav.css">
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    {% include "partials/navbar.html" %}
+
+    <main class="auth-container">
+        <div class="auth-card">
+            {# Registration is single-account, first-come-first-served (docs/15).
+               By the time this template renders, app/main.py's register_form
+               route has already redirected away if an account exists -- this
+               closed-message branch is defense in depth, in case a template
+               is ever rendered from somewhere that skips that check. #}
+            {% if closed %}
+            <h1>Registration is closed</h1>
+            <p class="auth-closed-message">
+                This app already has an account. If it's yours,
+                <a href="/login">log in instead</a>.
+            </p>
+            {% else %}
+            <h1>Create the account</h1>
+            <p class="auth-subtitle">
+                First (and only) account for this app -- registration closes
+                as soon as this form is submitted.
+            </p>
+
+            {% if error %}
+            <div class="auth-error" role="alert">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/register">
+                <div class="auth-field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+                </div>
+                <div class="auth-field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn-primary auth-submit">Create Account</button>
+            </form>
+
+            <p class="auth-footer">
+                Already have an account? <a href="/login">Log in</a>
+            </p>
+            {% endif %}
+        </div>
+    </main>
+
+    <script src="/static/js/nav.js"></script>
+</body>
+</html>
