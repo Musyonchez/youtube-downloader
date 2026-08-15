@@ -66,7 +66,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(SessionAuthMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, same_site="lax")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    same_site="lax",
+    # Secure cookie only when SECRET_KEY is explicitly set (i.e. a real
+    # deploy, not local dev) -- local/LAN use is plain HTTP, and a Secure
+    # cookie would never be sent back over it, silently breaking login.
+    https_only=bool(os.environ.get("SECRET_KEY")),
+)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

@@ -34,9 +34,11 @@
                 <button type="submit" class="btn-primary auth-submit">Log In</button>
             </form>
 
+            {% if registration_open() %}
             <p class="auth-footer">
                 No account yet? <a href="/register">Register</a>
             </p>
+            {% endif %}
         </div>
     </main>
 
