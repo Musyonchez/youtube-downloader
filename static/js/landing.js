@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const animatedElements = document.querySelectorAll(
-        '.feature-card, .step, .use-case-card, .faq-item'
+        '.feature-card, .step, .use-case-chip, .faq-item'
     );
 
     animatedElements.forEach(el => {

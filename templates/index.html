@@ -54,15 +54,19 @@
                 </div>
                 <div class="hero-image">
                     <div class="mockup-container">
+                        <div class="mockup-waveform" aria-hidden="true">
+                            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        </div>
                         <div class="mockup-glow"></div>
                         <div class="mockup-window">
                             <div class="window-header">
-                                <div class="window-dots">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
+                                <div class="window-label">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.3-4.3"></path>
+                                    </svg>
+                                    Search Results
                                 </div>
-                                <div class="window-title">localhost:8000</div>
                             </div>
                             <div class="window-content">
                                 <div class="search-mockup">
@@ -70,10 +74,42 @@
                         <span class="search-text">Search YouTube or paste URL...</span>
                     </div>
                                     <div class="results-mockup">
-                                        <div class="result-card"></div>
-                                        <div class="result-card"></div>
-                                        <div class="result-card"></div>
-                                        <div class="result-card"></div>
+                                        <div class="result-card">
+                                            <div class="result-thumb result-thumb-1">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                            </div>
+                                            <div class="result-info">
+                                                <div class="result-title">Midnight City Lights</div>
+                                                <div class="result-meta">Nova Waves &middot; 3:42</div>
+                                            </div>
+                                        </div>
+                                        <div class="result-card">
+                                            <div class="result-thumb result-thumb-2">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                            </div>
+                                            <div class="result-info">
+                                                <div class="result-title">Golden Hour</div>
+                                                <div class="result-meta">Aria Bloom &middot; 4:15</div>
+                                            </div>
+                                        </div>
+                                        <div class="result-card">
+                                            <div class="result-thumb result-thumb-3">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                            </div>
+                                            <div class="result-info">
+                                                <div class="result-title">Electric Skyline</div>
+                                                <div class="result-meta">The Drift &middot; 3:08</div>
+                                            </div>
+                                        </div>
+                                        <div class="result-card">
+                                            <div class="result-thumb result-thumb-4">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                            </div>
+                                            <div class="result-info">
+                                                <div class="result-title">Paper Moon</div>
+                                                <div class="result-meta">Coastal Static &middot; 2:56</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -87,7 +123,10 @@
     <!-- Features Section -->
     <section id="features" class="features">
         <div class="container">
-            <div class="section-header">
+            <div class="section-header section-header-left">
+                <div class="section-header-accent" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
                 <h2 class="section-title">Everything You Need</h2>
                 <p class="section-description">Powerful features that make downloading music effortless</p>
             </div>
@@ -115,6 +154,33 @@
                 <div class="feature-card">
                     <h3 class="feature-title">Privacy First</h3>
                     <p class="feature-description">Runs on your local network. No data sent to external servers. Your downloads, your privacy.</p>
+                </div>
+            </div>
+
+            <div class="use-cases-strip">
+                <h3 class="use-cases-strip-title">Perfect for...</h3>
+                <div class="use-cases-scroll">
+                    <div class="use-case-chip">
+                        <span class="use-case-chip-number">01</span>
+                        <div class="use-case-chip-body">
+                            <div class="use-case-chip-title">Browsing from Bed</div>
+                            <p class="use-case-chip-desc">Lying in bed with your phone? Search and add songs to your queue. Next morning, they're ready in your music folder.</p>
+                        </div>
+                    </div>
+                    <div class="use-case-chip">
+                        <span class="use-case-chip-number">02</span>
+                        <div class="use-case-chip-body">
+                            <div class="use-case-chip-title">Building Playlists</div>
+                            <p class="use-case-chip-desc">Found an amazing YouTube playlist? Paste the URL, preview all videos, select which ones you want, and download all at once.</p>
+                        </div>
+                    </div>
+                    <div class="use-case-chip">
+                        <span class="use-case-chip-number">03</span>
+                        <div class="use-case-chip-body">
+                            <div class="use-case-chip-title">Quick Downloads</div>
+                            <p class="use-case-chip-desc">Heard a great song? Copy the YouTube URL on any device, paste it in the app, and it's in your library in seconds.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -183,39 +249,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Use Cases Section -->
-    <section class="use-cases">
-        <div class="container">
-            <div class="section-header">
-                <h2 class="section-title">Perfect For</h2>
-                <p class="section-description">Real-world scenarios where YT Downloader shines</p>
-            </div>
-            <div class="use-cases-grid">
-                <div class="use-case-card">
-                    <h3 class="use-case-title">Browsing from Bed</h3>
-                    <p class="use-case-description">
-                        Lying in bed with your phone? Search and add songs to your queue. 
-                        Next morning, they're ready in your music folder.
-                    </p>
-                </div>
-                <div class="use-case-card">
-                    <h3 class="use-case-title">Building Playlists</h3>
-                    <p class="use-case-description">
-                        Found an amazing YouTube playlist? Paste the URL, preview all videos, 
-                        select which ones you want, and download all at once.
-                    </p>
-                </div>
-                <div class="use-case-card">
-                    <h3 class="use-case-title">Quick Downloads</h3>
-                    <p class="use-case-description">
-                        Heard a great song? Copy the YouTube URL on any device, 
-                        paste it in the app, and it's in your library in seconds.
-                    </p>
                 </div>
             </div>
         </div>
