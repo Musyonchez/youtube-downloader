@@ -1,4 +1,13 @@
 // Render Queue
+// Tracks the inputs of the last render so an unchanged poll tick (queue.js's
+// downloadSingle/downloadQueue poll every 1s while a download runs) can skip
+// rebuilding the DOM entirely, rather than tearing down and recreating every
+// queue item every second regardless of whether anything actually changed.
+// As a side benefit, it also stops the poll from clobbering the percent text
+// that websocket.js's updateQueueItemProgress() writes into those same
+// nodes between polls.
+let _lastQueueRenderKey = null;
+
 function renderQueue() {
     const content = document.getElementById('queueContent');
 
@@ -7,6 +16,12 @@ function renderQueue() {
         console.warn('Queue content element not found');
         return;
     }
+
+    const renderKey = JSON.stringify({ ids: queue.map(v => v.video_id), downloading: currentlyDownloading });
+    if (renderKey === _lastQueueRenderKey) {
+        return;
+    }
+    _lastQueueRenderKey = renderKey;
 
     if (queue.length === 0) {
         content.innerHTML = `

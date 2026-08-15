@@ -25,7 +25,7 @@ incremental hardening or polish.
 10. Add the highest-value missing tests: `download_task`, route-level `TestClient` coverage — AUD-19
 
 **Launch readiness:** N/A in the traditional sense (personal LAN tool, no external users),
-but "safe to keep growing the library on" — yes, once AUD-01/02/03/04 land.
+but "safe to keep growing the library on" — yes, all 29 tracked findings are fixed.
 
 ## What's already good — don't touch
 
@@ -64,29 +64,36 @@ but "safe to keep growing the library on" — yes, once AUD-01/02/03/04 land.
 | AUD-15 | P2 | UI/UX | Two badges (`.status-badge`, `.queue-badge`) fail WCAG AA contrast (white text on light green/red) | `static/css/app.css:437-447,739-751` | Darken backgrounds | **Fixed** |
 | AUD-16 | P3 | UI/UX | Results filter row can overflow on ≤360px phones (no `flex-wrap`) | `static/css/app.css:150-196,1066-1125` | `flex-wrap: wrap` on `.filter-toggle` | **Fixed** |
 | AUD-17 | P2 | Bugs | `downloadSingle()` shows "Download complete!" even when the download failed (only checks queue membership) | `static/js/queue.js:104-123` | Trust the WS `download_complete.success` flag | **Fixed** |
-| AUD-18 | P3 | Architecture | `download_task` (real orchestration logic) lives in the API layer, not services | `app/api/routes.py:235-287` | Move to `app/services/download_orchestrator.py` | Deferred (P3, no user-facing impact) |
-| AUD-19 | P1 | Testing | Zero test coverage for `download_task`, the core queue/download state machine | `app/api/routes.py:235-287` | New `tests/test_download_task.py` with mocked downloader | **Fixed** |
-| AUD-20 | P2 | Testing | No `TestClient`-based route tests at all | `tests/` | Add for library add/remove/config endpoints | Deferred (tracked, see below) |
-| AUD-21 | P3 | Security | `sanitize_filename` doesn't handle Windows reserved device names, length caps, or control chars | `app/utils.py:25-31` | Extend sanitizer | Deferred |
-| AUD-22 | P2 | Backend | Filename collision (same channel+title, different `video_id`) silently reuses the first file, second video never downloaded | `app/services/downloader.py:88-96` | Key filename check on video_id, not just text | Deferred |
-| AUD-23 | P3 | Perf | Unthrottled WebSocket progress broadcasts (fires on nearly every yt-dlp chunk) | `app/services/downloader.py:50-68` | Throttle to ≥1% delta or ~250ms | Deferred |
-| AUD-24 | P3 | Security | Loose URL validation (`'youtube.com' in url`) allows SSRF-flavored probing via yt-dlp's generic extractor | `app/services/search.py:141-149` | Proper host allowlist via `urlsplit` | Deferred |
-| AUD-25 | P4 | Architecture | Dead code: `download_batch`, `test_download`/`test_search()` `__main__` blocks, duplicate of `download_task`'s loop | `app/services/downloader.py:183-233`, `app/services/search.py:152-173` | Remove | **Fixed** (also added `logger.exception` calls to `search.py`'s except blocks while in there) |
-| AUD-26 | P3 | Product | `GET /api/downloaded` (download history) has a working backend, zero UI | `app/api/routes.py:212-216` | New history view (real feature, not a quick fix) | Deferred — tracked as a future feature |
-| AUD-27 | P3 | UI/UX | FAQ accordion buttons don't expose `aria-expanded` | `templates/index.html:232-297`, `static/js/landing.js:5-18` | Add ARIA state | Deferred |
-| AUD-28 | P4 | Perf | `renderQueue()` fully rebuilds the DOM every 1s poll regardless of change | `static/js/queue.js:2-34` | Diff before rebuild | Deferred |
+| AUD-18 | P3 | Architecture | `download_task` (real orchestration logic) lives in the API layer, not services | `app/api/routes.py:235-287` | Moved to `app/services/download_orchestrator.py`; routes.py now a thin wrapper | **Fixed** |
+| AUD-19 | P1 | Testing | Zero test coverage for `download_task`, the core queue/download state machine | `app/api/routes.py:235-287` | `tests/test_download_orchestrator.py` (core logic) + `tests/test_download_task.py` (routes wrapper/lock) | **Fixed** |
+| AUD-20 | P2 | Testing | No `TestClient`-based route tests at all | `tests/` | New `tests/test_api_routes.py` + `tests/test_history_page.py` | **Fixed** |
+| AUD-21 | P3 | Security | `sanitize_filename` doesn't handle Windows reserved device names, length caps, or control chars | `app/utils.py:25-31` | Reserved-name/empty/length/control-char handling added | **Fixed** |
+| AUD-22 | P2 | Backend | Filename collision (same channel+title, different `video_id`) silently reuses the first file, second video never downloaded | `app/services/downloader.py:88-96` | Filename now includes `[video_id]`; cleanup switched from `glob()` to literal-prefix matching (glob treats `[...]` as a char class) | **Fixed** |
+| AUD-23 | P3 | Perf | Unthrottled WebSocket progress broadcasts (fires on nearly every yt-dlp chunk) | `app/services/downloader.py:50-68` | Throttled to ≥1% delta or ~250ms, reset per video; final 100% always sent | **Fixed** |
+| AUD-24 | P3 | Security | Loose URL validation (`'youtube.com' in url`) allows SSRF-flavored probing via yt-dlp's generic extractor | `app/services/search.py:141-149` | Host allowlist via `urlsplit`, checked against actual netloc | **Fixed** |
+| AUD-25 | P4 | Architecture | Dead code: `download_batch`, `test_download`/`test_search()` `__main__` blocks, duplicate of `download_task`'s loop | `app/services/downloader.py:183-233`, `app/services/search.py:152-173` | Removed; also added `logger.exception` calls to `search.py`'s except blocks | **Fixed** |
+| AUD-26 | P3 | Product | `GET /api/downloaded` (download history) has a working backend, zero UI | `app/api/routes.py:212-216` | New `/history` page: filter (All/Downloaded/Failed), search, pagination, Retry on failed items | **Fixed** |
+| AUD-27 | P3 | UI/UX | FAQ accordion buttons don't expose `aria-expanded` | `templates/index.html:232-297`, `static/js/landing.js:5-18` | `aria-expanded`/`aria-controls`/`id` wired up | **Fixed** |
+| AUD-28 | P4 | Perf | `renderQueue()` fully rebuilds the DOM every 1s poll regardless of change | `static/js/queue.js:2-34` | Skips the rebuild when the queue's video-id set + downloading state are unchanged | **Fixed** |
 | AUD-29 | P4 | A11y | `youtube-preview-btn` relies on `title` only, not `aria-label` | `static/js/search.js:247-256` | Add `aria-label` | **Fixed** |
 
 Full per-area detail (all findings, including P3/P4 not tracked above) is preserved
 in the audit agents' original reports if needed later — this table keeps the ones
-worth tracking. Everything marked **Fixed** below was implemented in this pass;
-**Deferred** items are real but lower-value-per-effort or larger in scope (new UI,
-new feature) and are left for a future targeted pass, same pattern as prior docs.
+worth tracking.
 
 ## Roadmap
 
-- **Done (commit f9975e2):** AUD-01 through AUD-17, AUD-19, AUD-25, AUD-29.
-- **Soon:** AUD-20 (route-level tests), AUD-21/22 (filename edge cases), AUD-24 (URL allowlist).
-- **Later:** AUD-18 (routes.py → services split), AUD-23 (WS throttle).
-- **Future feature:** AUD-26 (download history UI) — this is a real feature addition,
-  not a bug fix; worth its own doc when prioritized.
+**All 29 tracked findings are fixed** (commits f9975e2, e743ea1, and the
+follow-up pass that closed AUD-18/20-24/26-28). Nothing outstanding from
+this audit round. Two notable behavior changes worth knowing about:
+
+- Downloaded filenames now include `[video_id]` (e.g.
+  `Artist - Title [dQw4w9WgXcQ].mp3`) to prevent same-titled videos from
+  colliding on one file (AUD-22). Existing files aren't renamed —
+  only new downloads use the new pattern.
+- A new `/history` page exists (AUD-26), linked from the navbar, backed by
+  the `/api/downloaded` endpoint that already existed.
+
+Re-run the [08-comprehensive-audit-prompt.md](08-comprehensive-audit-prompt.md)
+playbook for a future full-repo pass once the project has grown enough to
+justify it again.

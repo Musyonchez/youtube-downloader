@@ -79,6 +79,12 @@ async def read_app(request: Request, mode: str):
     )
 
 
+@app.get("/history", response_class=HTMLResponse)
+async def read_history(request: Request):
+    """Serve the download history page (docs/09, AUD-26)."""
+    return templates.TemplateResponse(request, "history.html", {"active_mode": "history"})
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""

@@ -16,6 +16,18 @@ _WINDOWS_SENSITIVE_DIRS = (
 )
 _POSIX_SENSITIVE_DIRS = (Path('/etc'), Path('/bin'), Path('/usr'), Path('/root'), Path('/boot'), Path('/sbin'))
 
+# Windows reserves these stems (case-insensitive, extension doesn't save you --
+# "NUL.mp3" is just as reserved as "NUL") for device files.
+_WINDOWS_RESERVED_NAMES = {
+    'CON', 'PRN', 'AUX', 'NUL',
+    *(f'COM{i}' for i in range(1, 10)),
+    *(f'LPT{i}' for i in range(1, 10)),
+}
+# Leaves headroom under Windows' ~260-char path limit for the download_dir
+# prefix and the .mp3 suffix -- long enough that truncation is rare, short
+# enough that it can't blow the limit on its own.
+_MAX_FILENAME_STEM_LENGTH = 150
+
 
 def extract_video_id(url: str) -> str | None:
     """Extract video ID from YouTube URL."""
@@ -38,11 +50,26 @@ def extract_video_id(url: str) -> str | None:
 
 
 def sanitize_filename(filename: str) -> str:
-    """Remove invalid characters from filename."""
-    # Remove invalid filename characters
-    filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+    """Remove invalid characters from filename, and guard against a few
+    Windows-specific edge cases that a title full of punctuation can hit:
+    a name that sanitizes to nothing, a name that collides with a reserved
+    device name (NUL, CON, COM1, ...), or one long enough to blow past the
+    filesystem path limit once combined with a download directory."""
+    # Remove invalid filename characters, plus control characters (including
+    # embedded nulls) that the original punctuation-only regex let through.
+    filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', filename)
     # Remove extra whitespace
     filename = ' '.join(filename.split())
+
+    if not filename:
+        filename = 'untitled'
+
+    if filename.upper() in _WINDOWS_RESERVED_NAMES:
+        filename = f'_{filename}'
+
+    if len(filename) > _MAX_FILENAME_STEM_LENGTH:
+        filename = filename[:_MAX_FILENAME_STEM_LENGTH].rstrip()
+
     return filename
 
 

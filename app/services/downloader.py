@@ -1,6 +1,7 @@
 """YouTube downloader with progress tracking and metadata tagging."""
 import logging
 import shutil
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -60,6 +61,13 @@ class YouTubeDownloader:
         self.task_id: TaskID | None = None
         self._current_video_id: str | None = None
 
+        # Throttling state for progress_callback (see _progress_hook) --
+        # yt-dlp's hook fires on nearly every downloaded chunk, which used to
+        # mean a WebSocket broadcast per chunk. Reset per video in
+        # download_audio so each video gets its own first broadcast promptly.
+        self._last_broadcast_percent: float = -1.0
+        self._last_broadcast_time: float = 0.0
+
     def _progress_hook(self, d):
         """Progress callback for yt-dlp."""
         if d['status'] == 'downloading':
@@ -71,13 +79,25 @@ class YouTubeDownloader:
                     self.progress.update(self.task_id, completed=downloaded, total=total)
 
                 if self.progress_callback is not None and self._current_video_id is not None:
-                    self.progress_callback(self._current_video_id, round(downloaded / total * 100, 1))
+                    percent = round(downloaded / total * 100, 1)
+                    now = time.monotonic()
+                    # Only broadcast on a meaningful change: at least a 1%
+                    # jump, or 250ms since the last one -- whichever comes
+                    # first. Keeps the UI responsive without a WebSocket
+                    # message on every single downloaded chunk.
+                    if (percent - self._last_broadcast_percent >= 1.0
+                            or now - self._last_broadcast_time >= 0.25):
+                        self.progress_callback(self._current_video_id, percent)
+                        self._last_broadcast_percent = percent
+                        self._last_broadcast_time = now
 
         elif d['status'] == 'finished':
             if self.task_id is not None and self.progress is not None:
                 self.progress.update(self.task_id, completed=100, total=100)
 
             if self.progress_callback is not None and self._current_video_id is not None:
+                # Always send the final 100% regardless of throttling, so the
+                # UI doesn't get stuck showing a slightly-under percentage.
                 self.progress_callback(self._current_video_id, 100.0)
 
     def download_audio(self, video_info: dict) -> str | None:
@@ -89,6 +109,8 @@ class YouTubeDownloader:
             title = video_info['title']
             channel = video_info['channel']
             self._current_video_id = video_info.get('video_id')
+            self._last_broadcast_percent = -1.0
+            self._last_broadcast_time = 0.0
 
             if shutil.which('ffmpeg') is None:
                 logger.error("FFmpeg not found; cannot download %s", title)
@@ -99,8 +121,17 @@ class YouTubeDownloader:
                 )
                 return None
 
-            # Create filename: "Artist - Title.mp3"
-            base_name = sanitize_filename(f"{channel} - {title}")
+            # Create filename: "Artist - Title [video_id].mp3". The video_id
+            # suffix guarantees uniqueness -- without it, two different
+            # videos that happen to share a channel+title (re-uploads,
+            # "Official Audio" vs "Official Video" versions, etc.) would
+            # collide on the same output path. download_audio would then
+            # treat the second video as "already downloaded" (see the
+            # exists-check below) without ever fetching its actual audio,
+            # and both DB records would silently point at the first file.
+            video_id = video_info.get('video_id') or ''
+            title_part = sanitize_filename(f"{channel} - {title}")
+            base_name = f"{title_part} [{video_id}]" if video_id else title_part
             filename = f"{base_name}.mp3"
             output_path = self.download_dir / filename
 
@@ -167,8 +198,17 @@ class YouTubeDownloader:
     def _cleanup_partial_download(self, base_name: str):
         """Remove any raw/partial file yt-dlp wrote before a failure (e.g. the
         FFmpeg conversion step failing) instead of leaving it behind under a
-        filename that looks like -- but isn't -- the expected MP3."""
-        for leftover in self.download_dir.glob(f"{base_name}.*"):
+        filename that looks like -- but isn't -- the expected MP3.
+
+        Matches by literal prefix (iterdir + startswith) rather than
+        Path.glob(f"{base_name}.*") -- base_name can contain a "[video_id]"
+        suffix (see AUD-22), and glob treats square brackets as a character
+        class, not literal text, so a glob pattern would silently fail to
+        match its own target."""
+        prefix = f"{base_name}."
+        for leftover in self.download_dir.iterdir():
+            if not leftover.name.startswith(prefix):
+                continue
             try:
                 leftover.unlink()
                 logger.info("Removed orphaned partial download: %s", leftover)

@@ -1,6 +1,6 @@
 {# Shared navbar + mobile menu, included by every page.
    Context variables (all optional):
-     active_mode   -- 'name' | 'playlist' | 'url' | not set (landing page)
+     active_mode   -- 'name' | 'playlist' | 'url' | 'history' | not set (landing page)
      show_settings -- true on app pages (adds the settings-gear button)
    See docs/06-ui-review.md for why this is a shared include rather than
    copy-pasted per page. #}
@@ -16,6 +16,7 @@
                 <a href="/app/name" class="{{ 'active' if active_mode == 'name' else '' }}">Name</a>
                 <a href="/app/playlist" class="{{ 'active' if active_mode == 'playlist' else '' }}">Playlist</a>
                 <a href="/app/url" class="{{ 'active' if active_mode == 'url' else '' }}">URL</a>
+                <a href="/history" class="{{ 'active' if active_mode == 'history' else '' }}">History</a>
             </div>
             <div class="nav-actions">
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
@@ -56,6 +57,7 @@
     <a href="/app/name" onclick="toggleMobileMenu()">Name</a>
     <a href="/app/playlist" onclick="toggleMobileMenu()">Playlist</a>
     <a href="/app/url" onclick="toggleMobileMenu()">URL</a>
+    <a href="/history" onclick="toggleMobileMenu()">History</a>
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
         <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"></circle>

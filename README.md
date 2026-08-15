@@ -147,12 +147,18 @@ The server will start and display:
 2. **Playlist** (`/app/playlist`):
    - Paste YouTube playlist URL
    - See all videos with metadata
-   - Add individual videos or entire playlist
+   - Add videos to the queue individually
 
 3. **URL** (`/app/url`):
    - Paste single video URL
    - Preview video info
    - Add to queue
+
+#### History (`/history`)
+
+- Every download attempt this app has ever recorded, success or failure
+- Filter by All / Downloaded / Failed, or search by title/channel
+- Failed downloads get a **Retry** button (re-adds to the queue)
 
 #### Queue Management
 
@@ -185,7 +191,8 @@ youtube-downloader/
 │   │   └── routes.py         # REST API endpoints
 │   ├── services/
 │   │   ├── search.py         # YouTube search with yt-dlp
-│   │   └── downloader.py     # Download logic & progress tracking
+│   │   ├── downloader.py     # Download logic & progress tracking
+│   │   └── download_orchestrator.py  # Batch-download queue logic (used by api/routes.py)
 │   └── storage/
 │       ├── db.py             # SQLite wrapper (library queue & history)
 │       └── storage.py        # Storage facade (config.json + db.py)
@@ -195,14 +202,17 @@ youtube-downloader/
 ├── static/
 │   ├── css/
 │   │   ├── landing.css      # Landing page styles
-│   │   └── app.css          # App split-screen layout
+│   │   ├── app.css          # App split-screen layout
+│   │   └── history.css      # Download history page
 │   └── js/
 │       ├── landing.js       # Landing page interactions
+│       ├── history.js       # Download history page (self-contained)
 │       └── (app logic, split into state.js, api.js, ui.js,
 │            search.js, queue.js, websocket.js, main.js)
 ├── templates/
 │   ├── index.html           # Landing page
-│   └── app.html             # Main app (3 search modes)
+│   ├── app.html             # Main app (3 search modes)
+│   └── history.html         # Download history page
 ├── scripts/                 # One-off personal utility scripts
 │   ├── download_temp.py
 │   └── rename_bible.py
@@ -225,10 +235,10 @@ The web app exposes a REST API:
 - `POST /api/playlist-info` - Get playlist info
 - `GET /api/library` - Get download queue
 - `POST /api/library/add` - Add video to queue
-- `POST /api/library/add-multiple` - Add multiple videos
 - `DELETE /api/library/{video_id}` - Remove from queue
 - `DELETE /api/library` - Clear queue
-- `POST /api/download` - Start downloading
+- `POST /api/download` - Start downloading (409 if a download is already running)
+- `GET /api/downloaded` - Get full download history (success and failed attempts) -- see the `/history` page
 - `GET /api/config` - Get settings
 - `POST /api/config` - Update settings
 

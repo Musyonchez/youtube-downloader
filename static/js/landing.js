@@ -5,15 +5,17 @@
 function toggleFaq(button) {
     const faqItem = button.parentElement;
     const isActive = faqItem.classList.contains('active');
-    
+
     // Close all FAQs
     document.querySelectorAll('.faq-item').forEach(item => {
         item.classList.remove('active');
+        item.querySelector('.faq-question')?.setAttribute('aria-expanded', 'false');
     });
-    
+
     // Open clicked FAQ if it wasn't active
     if (!isActive) {
         faqItem.classList.add('active');
+        button.setAttribute('aria-expanded', 'true');
     }
 }
 

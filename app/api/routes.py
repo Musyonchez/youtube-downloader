@@ -7,6 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
+from app.services.download_orchestrator import run_download_task
 from app.services.downloader import YouTubeDownloader
 from app.services.search import YouTubeSearcher
 from app.storage.storage import Storage
@@ -224,69 +225,18 @@ async def update_config(config: ConfigUpdate) -> dict:
 
 # Background task for downloading
 def download_task(video_ids: list[str] | None, loop: asyncio.AbstractEventLoop):
-    """Background task to download videos.
+    """Background-thread entrypoint for FastAPI's BackgroundTasks.
 
-    Runs in a threadpool worker (FastAPI's BackgroundTasks), so progress and
-    completion events are bridged onto the main event loop via `loop` to
-    reach WebSocket clients.
-
-    Caller (start_download) is responsible for holding _download_lock for
-    the duration of this function -- see the comment there.
+    The actual batch-download logic lives in
+    app.services.download_orchestrator.run_download_task (kept in the
+    services layer, not here -- see docs/09, AUD-18); this wrapper's only
+    job is bridging that into the background-task API and releasing the
+    concurrency guard (_download_lock, see start_download) once done,
+    success or failure.
     """
     global _download_in_progress
     try:
-        library = storage.load_library()
-
-        # Filter by video_ids if provided
-        if video_ids:
-            library = [v for v in library if v['video_id'] in video_ids]
-
-        if not library:
-            return
-
-        config = storage.load_config()
-
-        def on_progress(video_id: str, percent: float):
-            manager.broadcast_threadsafe({"type": "progress", "video_id": video_id, "percent": percent}, loop)
-
-        downloader = YouTubeDownloader(
-            download_dir=config['download_dir'],
-            audio_quality=config['audio_quality'],
-            progress_callback=on_progress,
-        )
-
-        # Download each video individually and update queue immediately
-        for video_info in library:
-            try:
-                file_path = downloader.download_audio(video_info)
-            except Exception:
-                logger.exception("Unexpected error downloading %s", video_info.get('video_id'))
-                file_path = None
-
-            # Record the outcome (success *or* failure) before removing from
-            # the queue, not after: these are two separate SQLite writes, and
-            # if the process died between them in the old remove-then-record
-            # order, a completed download could vanish from both tables. The
-            # failure record also means a failed video is no longer silently
-            # discarded -- it's queryable via /api/downloaded and, because
-            # is_downloaded() only matches success=1 rows, still re-queueable.
-            result = {
-                **video_info,
-                'success': bool(file_path),
-                'file_path': file_path,
-            }
-            storage.add_to_downloaded(result)
-            storage.remove_from_library(video_info['video_id'])
-
-            if file_path:
-                manager.broadcast_threadsafe(
-                    {"type": "download_complete", "video_id": video_info['video_id'], "success": True}, loop
-                )
-            else:
-                logger.warning("Download failed for %s (%s)", video_info.get('title'), video_info.get('video_id'))
-                manager.broadcast_threadsafe(
-                    {"type": "download_complete", "video_id": video_info['video_id'], "success": False}, loop
-                )
+        run_download_task(storage, manager, video_ids, loop, downloader_cls=YouTubeDownloader)
     finally:
         with _download_lock:
             _download_in_progress = False
