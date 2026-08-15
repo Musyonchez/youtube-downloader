@@ -63,12 +63,18 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, observerOptions);
 
-// Animate elements on scroll
+// Animate elements on scroll -- skipped entirely when the user has the
+// OS-level reduced-motion preference set (docs/12-ui-redesign-plan.md step
+// 5): content just appears instead of fading/translating in.
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
     const animatedElements = document.querySelectorAll(
         '.feature-card, .step, .use-case-card, .faq-item'
     );
-    
+
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';

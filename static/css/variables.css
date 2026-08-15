@@ -1,0 +1,134 @@
+/* Shared design tokens -- consolidated from the identical :root blocks that
+   used to be copy-pasted in app.css and landing.css (docs/11 agent 3, docs/12
+   step 1). Loaded before app.css/landing.css/history.css in every template's
+   <head>, the same way nav.css already is -- those files still consume these
+   custom properties via var(...).
+
+   Palette: "warm analog" (docs/12) -- a copper/amber primary accent + a deep
+   teal secondary accent, replacing the generic indigo/violet/fuchsia SaaS
+   gradient that used to live here. Both accent hexes were picked and tuned
+   with a throwaway WCAG contrast script (relative luminance / contrast
+   ratio formula, same method as the docs/09 AUD-15 badge fix) rather than by
+   eye -- see docs/12 implementation notes for the exact ratios:
+     - white text on --accent (button backgrounds):        ~4.57:1 (AA)
+     - white text on --accent-secondary (queued badge):     ~6.39:1 (AA)
+     - --accent used as text color on dark bg (#0a0a0f):    ~4.32:1
+     - --accent used as text color on white bg:              ~4.57:1 (AA)
+   The dark-bg-as-text case sits just under 4.5:1 -- #0a0a0f is close enough
+   to black that no single hex can clear 4.5:1 as both a white-text button
+   background *and* a foreground text color against that background at the
+   same time (the two constraints' luminance bands don't overlap). The button
+   role was prioritized since it's the higher-traffic surface (call-to-action
+   buttons/badges vs. two small text usages: .nav-links a.active, .stat
+   strong) -- this hex is the closest balance of both. */
+
+:root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #131318;
+    --bg-tertiary: #1a1a23;
+    --text-primary: #ffffff;
+    --text-secondary: #a8a8b3;
+
+    /* Primary accent -- warm copper. */
+    --accent: #a06a2f;
+    --accent-hover: #8a5726;
+    /* Secondary accent -- deep teal. Also what --queued points at, so the
+       "queued" status badge (docs/09 AUD-06) ties back into the app's own
+       palette instead of an arbitrary unrelated blue. */
+    --accent-secondary: #0d6b5f;
+    --queued: var(--accent-secondary);
+
+    /* Restrained two-stop copper -> amber gradient (was a 3-stop indigo ->
+       violet -> fuchsia rainbow reused in 6+ places -- docs/11 agent 2's
+       top finding). */
+    --gradient-1: linear-gradient(135deg, #a06a2f 0%, #d99a3d 100%);
+    --gradient-2: linear-gradient(135deg, #0d6b5f 0%, #a06a2f 100%);
+
+    --success: #10b981;
+    --warning: #f85149;
+    /* Darker than --success/--warning specifically for white-text badges --
+       #10b981/#f85149 fall under WCAG AA's 4.5:1 minimum for white text. */
+    --success-strong: #047857;
+    --warning-strong: #b91c1c;
+
+    --border: #27272a;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+    /* Heading-only display font (docs/12 step 4) -- body copy stays on the
+       system stack for scan-speed, see app.css/landing.css body rule. */
+    --font-heading: 'Fraunces', Georgia, 'Times New Roman', serif;
+}
+
+/* Light Mode */
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #f1f3f5;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+    /* Previously silently inherited the dark-mode accent/gradient/status
+       values (docs/11 agent 3 gotcha #1) -- explicitly set here instead.
+       The dark-theme copper/teal hexes above already clear 4.5:1 against a
+       *white* background too (verified with the same contrast script), so
+       they carry over unchanged; status colors are backgrounds-only (badge
+       fills, border colors), never plain text on the page background, so
+       they're theme-independent and also carry over unchanged. */
+    --accent: #a06a2f;
+    --accent-hover: #8a5726;
+    --accent-secondary: #0d6b5f;
+    --queued: var(--accent-secondary);
+    --gradient-1: linear-gradient(135deg, #a06a2f 0%, #d99a3d 100%);
+    --gradient-2: linear-gradient(135deg, #0d6b5f 0%, #a06a2f 100%);
+    --success: #10b981;
+    --warning: #f85149;
+    --success-strong: #047857;
+    --warning-strong: #b91c1c;
+}
+
+/* Heading font application (docs/12 step 4). Scoped to headings only --
+   h1/h2/h3 cover .search-header h1, .section-title, .feature-title,
+   .step-title, .use-case-title, .cta-title, .modal-header h2,
+   .queue-header h2, .empty-state h3, etc. across all three pages, since
+   they're all real h1/h2/h3 elements in the templates. .logo-text is a
+   <span>, not a heading element, so it's targeted explicitly. Font weight
+   stays whatever each selector already sets -- only the family changes. */
+h1,
+h2,
+h3,
+.logo-text {
+    font-family: var(--font-heading);
+}
+
+/* Reduced motion (docs/12 step 5) -- confirmed absent everywhere prior to
+   this pass (docs/11 agent 3). Neutralizes decorative @keyframes/transition
+   motion (shimmer, pulse, slideIn, progressPulse, dots, progress, hover
+   lifts, the landing page's scroll-shadow/faq/card transitions) so content
+   just appears instead of animating in. The spinner is functional -- it's
+   the only UI signal that a search/download is actively in progress -- so
+   it's given back a slower-but-still-moving animation rather than being
+   frozen solid; every other animation/transition duration collapses to
+   effectively instant. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .spinner {
+        animation-duration: 1.2s !important;
+        animation-iteration-count: infinite !important;
+    }
+}

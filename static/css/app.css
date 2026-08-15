@@ -1,37 +1,8 @@
 /* YouTube Downloader App - Split Screen Layout */
 
-:root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #131318;
-    --bg-tertiary: #1a1a23;
-    --text-primary: #ffffff;
-    --text-secondary: #a8a8b3;
-    --accent: #6366f1;
-    --accent-hover: #7c3aed;
-    --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
-    --success: #10b981;
-    --warning: #f85149;
-    /* Darker than --success/--warning specifically for white-text badges --
-       #10b981/#f85149 fall under WCAG AA's 4.5:1 minimum for white text. */
-    --success-strong: #047857;
-    --warning-strong: #b91c1c;
-    --queued: #2563eb;
-    --border: #27272a;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Light Mode */
-[data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --bg-tertiary: #f1f3f5;
-    --text-primary: #1a1a1a;
-    --text-secondary: #6b7280;
-    --border: #e5e7eb;
-}
+/* Shared color tokens (:root / [data-theme="light"]) now live in
+   variables.css, loaded before this file -- see docs/12-ui-redesign-plan.md
+   step 1. */
 
 * {
     margin: 0;
@@ -121,7 +92,7 @@ body {
 .search-bar input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(160, 106, 47, 0.1);
 }
 
 .search-bar button {
@@ -600,7 +571,7 @@ body {
 
 .queue-item.downloading {
     border-color: var(--accent);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(160, 106, 47, 0.05);
 }
 
 .queue-item.downloading::before {
@@ -719,14 +690,14 @@ body {
     display: none;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 24px rgba(160, 106, 47, 0.4);
     transition: all 0.3s;
     z-index: 50;
 }
 
 .queue-float-btn:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 12px 32px rgba(160, 106, 47, 0.5);
 }
 
 .queue-float-btn.show {

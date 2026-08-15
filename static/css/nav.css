@@ -82,7 +82,7 @@
 
 .nav-links a.active {
     color: var(--accent);
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(160, 106, 47, 0.1);
 }
 
 .nav-actions {

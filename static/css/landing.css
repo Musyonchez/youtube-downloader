@@ -1,36 +1,8 @@
 /* Modern SaaS Landing Page Styles */
 
-:root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #131318;
-    --bg-tertiary: #1a1a23;
-    --text-primary: #ffffff;
-    --text-secondary: #a8a8b3;
-    --accent: #6366f1;
-    --accent-hover: #7c3aed;
-    --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
-    --gradient-2: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    --success: #10b981;
-    --border: #27272a;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Light Mode */
-[data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --bg-tertiary: #f1f3f5;
-    --text-primary: #1a1a1a;
-    --text-secondary: #6b7280;
-    --border: #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
+/* Shared color tokens (:root / [data-theme="light"]) now live in
+   variables.css, loaded before this file -- see docs/12-ui-redesign-plan.md
+   step 1. */
 
 * {
     margin: 0;
@@ -82,7 +54,7 @@ body {
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 12px 24px -10px rgba(160, 106, 47, 0.5);
 }
 
 .btn-secondary {
@@ -123,12 +95,12 @@ body {
     right: -20%;
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.15) 0%, transparent 70%);
     pointer-events: none;
 }
 
 [data-theme="light"] .hero::before {
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.08) 0%, transparent 70%);
 }
 
 .hero-content {
@@ -204,13 +176,13 @@ body {
     transform: translate(-50%, -50%);
     width: 120%;
     height: 120%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.2) 0%, transparent 70%);
     filter: blur(60px);
     pointer-events: none;
 }
 
 [data-theme="light"] .mockup-glow {
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.1) 0%, transparent 70%);
 }
 
 .mockup-window {
@@ -364,7 +336,7 @@ body {
 .feature-card:hover {
     transform: translateY(-8px);
     border-color: var(--accent);
-    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 20px 40px rgba(160, 106, 47, 0.1);
 }
 
 .feature-title {
@@ -468,7 +440,7 @@ body {
 
 .visual-card.selected {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 0 2px rgba(160, 106, 47, 0.2);
 }
 
 .visual-download {
@@ -620,12 +592,12 @@ body {
     transform: translate(-50%, -50%);
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.2) 0%, transparent 70%);
     pointer-events: none;
 }
 
 [data-theme="light"] .cta::before {
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 106, 47, 0.1) 0%, transparent 70%);
 }
 
 .cta-content {
@@ -826,7 +798,7 @@ body {
 
 [data-theme="light"] .feature-card:hover,
 [data-theme="light"] .use-case-card:hover {
-    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 20px 40px rgba(160, 106, 47, 0.15);
 }
 
 /* [data-theme="light"] .navbar / .mobile-menu now live in nav.css. */
