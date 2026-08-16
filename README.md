@@ -188,8 +188,9 @@ The server will start and display:
 ```
 youtube-downloader/
 ├── app/                      # Python package -- run as `python -m app.main`
-│   ├── main.py               # FastAPI app instance, page routes, /ws
-│   ├── auth.py                # Optional HTTP Basic Auth (opt-in via env vars, see docs/14)
+│   ├── main.py               # FastAPI app instance, page routes (incl. /login, /register), /ws
+│   ├── session_auth.py       # Session-cookie auth gate (see docs/15)
+│   ├── passwords.py           # PBKDF2 password hashing
 │   ├── ws_manager.py         # WebSocket connection manager
 │   ├── utils.py              # Pure helpers (filenames, durations, URL parsing)
 │   ├── api/
@@ -248,9 +249,14 @@ The web app exposes a REST API:
 - `DELETE /api/library/{video_id}` - Remove from queue
 - `DELETE /api/library` - Clear queue
 - `POST /api/download` - Start downloading (409 if a download is already running)
-- `GET /api/downloaded` - Get full download history (success and failed attempts) -- see the `/history` page
+- `GET /api/downloaded?limit=&offset=` - Get a page of download history (success and failed attempts, newest first) plus the total count -- see the `/history` page
 - `GET /api/config` - Get settings
 - `POST /api/config` - Update settings
+
+Every route above requires a logged-in session (docs/15) -- see `POST /login`,
+`GET /login`, `POST /register`, `GET /register`, and `POST /logout`, served
+from `app/main.py` rather than this REST API (they render HTML pages, not
+JSON). Registration is only open while zero accounts exist.
 
 ## Configuration
 
@@ -320,12 +326,20 @@ This builds the app with FFmpeg included and mounts `downloads/` and `data/` (co
 
 ### Deploying to Fly.io
 
-This app was built assuming LAN-only access with no login. A public Fly.io
-deploy needs HTTP Basic Auth turned on first (`APP_USERNAME`/`APP_PASSWORD`
-as Fly secrets — see [docs/14-deployment.md](docs/14-deployment.md) for
-the full runbook, including persistent volumes and the CD pipeline).
-Local/LAN use is unaffected either way — auth only activates when those
-env vars are set.
+This app was originally built assuming LAN-only access with no login; it
+now has real session-cookie auth instead (see [docs/15-auth-plan.md](docs/15-auth-plan.md)).
+The account is single-user and first-come-first-served: the first person
+to submit `/register` becomes the account, and registration closes
+immediately afterward (server-enforced, not just hidden in the UI). Set
+`SECRET_KEY` as a persistent Fly secret before deploying — it signs the
+session cookie, and without it a fresh random key is generated on every
+process start, silently logging everyone out on each restart/redeploy.
+See [docs/14-deployment.md](docs/14-deployment.md) for the full runbook,
+including persistent volumes and the CD pipeline. Local/LAN use still
+works the same way (register the first account, then log in) — cookies
+just aren't marked `Secure` outside a real deploy (detected via Fly's own
+`FLY_APP_NAME` env var, or an explicit `ENVIRONMENT=production`), since a
+`Secure` cookie is never sent back over plain HTTP.
 
 ### Contributing
 
@@ -493,6 +507,18 @@ Free to use for personal projects.
 ---
 
 ## Changelog
+
+### Unreleased
+
+- 🔒 Post-auth audit fixes (see `docs/16`): atomic first-account
+  registration (closes a two-different-usernames race), per-username login
+  rate limiting, a real `ENVIRONMENT`/`FLY_APP_NAME`-based signal for
+  Secure cookies (instead of inferring it from whether `SECRET_KEY` was
+  set), a server-side minimum password length, paginated download-history
+  API/page, one shared `Storage` instance instead of two, plus a set of
+  smaller UI/accessibility/contrast fixes (mobile navbar on the login/
+  register pages, `aria-expanded` on the mobile menu button, auth-error
+  and accent-as-text color contrast, a deduplicated `showToast`)
 
 ### v3.0.0
 
