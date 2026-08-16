@@ -137,3 +137,48 @@ def test_filters_by_video_ids(tmp_path):
     # Only the requested video was touched.
     assert storage.get_item_status('abc123') == 'downloaded'
     assert storage.get_item_status('other456') == 'queued'
+
+
+def test_pushes_outcome_to_fly_sync_on_success_and_failure(tmp_path, monkeypatch):
+    """Every real local download outcome -- success or failure -- is
+    pushed to Fly (fly_sync.push_download_outcome), regardless of whether
+    that item originated from a Fly pull (docs: "simplest consistent
+    rule", no per-item provenance tracking)."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+    storage.add_to_library({**VIDEO, 'video_id': 'other456'})
+
+    fake_downloader = MagicMock()
+    fake_downloader.download_audio.side_effect = ['/tmp/song.mp3', None]
+    downloader_cls = MagicMock(return_value=fake_downloader)
+
+    from app.services import download_orchestrator
+    pushed = []
+    monkeypatch.setattr(download_orchestrator.fly_sync, 'push_download_outcome', pushed.append)
+
+    run_download_task(storage, MagicMock(), None, loop=MagicMock(), downloader_cls=downloader_cls)
+
+    pushed_ids = {p['video_id']: p['success'] for p in pushed}
+    assert pushed_ids == {'abc123': True, 'other456': False}
+
+
+def test_does_not_push_to_fly_sync_when_is_production(tmp_path, monkeypatch):
+    """Belt-and-suspenders IS_PRODUCTION gate, matching the pattern used
+    everywhere else in this codebase -- even though the Fly deployment
+    should never reach this function at all (start_download already
+    refuses /api/download there)."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+
+    fake_downloader = MagicMock()
+    fake_downloader.download_audio.return_value = '/tmp/song.mp3'
+    downloader_cls = MagicMock(return_value=fake_downloader)
+
+    from app.services import download_orchestrator
+    monkeypatch.setattr(download_orchestrator, 'IS_PRODUCTION', True)
+    pushed = []
+    monkeypatch.setattr(download_orchestrator.fly_sync, 'push_download_outcome', pushed.append)
+
+    run_download_task(storage, MagicMock(), None, loop=MagicMock(), downloader_cls=downloader_cls)
+
+    assert pushed == []

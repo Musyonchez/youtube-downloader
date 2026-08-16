@@ -7,3 +7,10 @@ jinja2>=3.1.0
 websockets>=12.0
 rich>=13.0.0
 itsdangerous>=2.1.0
+# Used by app/services/fly_sync.py to talk to the remote Fly deployment
+# (local-only Fly sync feature) -- log in, fetch/pull the remote library,
+# push a completed local download's outcome. Also already a transitive
+# dependency of starlette.testclient (see requirements-dev.txt's comment
+# on httpx2), but declared here directly since production code now imports
+# it too.
+httpx>=0.27.0

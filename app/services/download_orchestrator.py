@@ -10,8 +10,10 @@ straightforward to unit test without monkeypatching another module.
 import asyncio
 import logging
 
+from app.services import fly_sync
 from app.services.downloader import YouTubeDownloader
 from app.storage.storage import Storage
+from app.utils import IS_PRODUCTION
 from app.ws_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -90,6 +92,20 @@ def run_download_task(
                 "outcome -- it may now appear both downloaded and still queued.",
                 video_info.get('video_id'),
             )
+
+        # Fly sync push (best-effort, local-only): tell the live Fly app
+        # about this outcome -- success or failure -- so its own
+        # history/queue reflect a download that actually happened here.
+        # IS_PRODUCTION should never be true in this function at all (the
+        # Fly deployment already refuses to reach run_download_task at all,
+        # see app/api/routes.py's start_download), but gated explicitly
+        # anyway to match the same pattern used everywhere else rather than
+        # relying solely on that upstream guard. push_download_outcome
+        # itself is a no-op when Fly sync isn't configured, and never
+        # raises -- a failed push must not affect this local download,
+        # which has already succeeded or failed on its own merits.
+        if not IS_PRODUCTION:
+            fly_sync.push_download_outcome(result)
 
         if file_path:
             manager.broadcast_threadsafe(

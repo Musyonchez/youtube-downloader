@@ -247,6 +247,32 @@ async function downloadQueue() {
     }
 }
 
+// Pull whatever's queued on the live Fly app into this (local) instance's
+// own queue (POST /api/sync/pull). Only reachable when loadSyncStatus()
+// has shown the button at all -- see static/js/api.js and
+// app/api/routes.py's /api/sync/status. Never triggers a download; the
+// user still starts that normally via the existing Download button.
+async function syncFromFly() {
+    const btn = document.getElementById('sync-btn');
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Syncing...';
+        }
+        const data = await apiCall('/api/sync/pull', 'POST');
+        showToast(data.message, 'success');
+        await loadStatus();
+        await loadQueue();
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Sync from Fly';
+        }
+    }
+}
+
 async function saveSettings() {
     const audioQuality = document.getElementById('audio-quality').value;
     const downloadDir = document.getElementById('download-dir').value;

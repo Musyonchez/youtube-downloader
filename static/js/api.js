@@ -73,3 +73,20 @@ async function loadConfig() {
         console.error('Failed to load config:', error);
     }
 }
+
+// Load Fly-sync availability and show/hide the "Sync from Fly" button
+// accordingly (local-only feature, only offered when FLY_SYNC_URL/
+// FLY_SYNC_USERNAME/FLY_SYNC_PASSWORD are all configured -- see
+// app/api/routes.py's /api/sync/status). Failing closed (button stays
+// hidden) on any error, same as the other loadX() functions here.
+async function loadSyncStatus() {
+    const btn = document.getElementById('sync-btn');
+    if (!btn) return;
+    try {
+        const data = await apiCall('/api/sync/status');
+        btn.style.display = data.available ? '' : 'none';
+    } catch (error) {
+        console.error('Failed to load sync status:', error);
+        btn.style.display = 'none';
+    }
+}
