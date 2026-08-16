@@ -5,8 +5,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
 
 WORKDIR /srv
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# requirements.lock (docs/16, 16-15) pins the full resolved dependency
+# closure -- reproducible builds instead of "whatever's newest today" on
+# every image rebuild. See requirements.lock's header for how to regenerate
+# it after changing requirements.txt.
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 COPY . .
 

@@ -69,7 +69,7 @@ A self-hosted web app for turning YouTube videos into high-quality MP3s — sear
    make install
 
    # Or manually
-   pip install -r requirements.txt
+   pip install -r requirements.lock
 
    # Optional: Development tools (linting, type checking)
    make install-dev
@@ -229,7 +229,8 @@ youtube-downloader/
 ├── run.sh                   # Startup script (Linux/macOS/Git Bash)
 ├── run.ps1                  # Startup script (native Windows PowerShell)
 ├── Makefile                 # Development commands
-├── requirements.txt         # Production dependencies
+├── requirements.txt         # Production dependencies (loose >= bounds)
+├── requirements.lock        # Same, pinned to exact versions -- what Dockerfile/CI actually install (see its header)
 ├── requirements-dev.txt     # Dev tools (mypy, ruff, flake8, pytest)
 ├── fly.toml                 # Fly.io deploy config -- see docs/14-deployment.md
 ├── CONTRIBUTING.md           # Branch/PR workflow (master is branch-protected)
@@ -396,7 +397,7 @@ the branch → PR → squash-merge workflow.
 **Server won't start**
 
 - Make sure venv is activated: `source venv/bin/activate`
-- Install dependencies: `pip install -r requirements.txt`
+- Install dependencies: `pip install -r requirements.lock`
 
 **Can't access from phone**
 
@@ -510,15 +511,23 @@ Free to use for personal projects.
 
 ### Unreleased
 
-- 🔒 Post-auth audit fixes (see `docs/16`): atomic first-account
-  registration (closes a two-different-usernames race), per-username login
-  rate limiting, a real `ENVIRONMENT`/`FLY_APP_NAME`-based signal for
-  Secure cookies (instead of inferring it from whether `SECRET_KEY` was
-  set), a server-side minimum password length, paginated download-history
-  API/page, one shared `Storage` instance instead of two, plus a set of
-  smaller UI/accessibility/contrast fixes (mobile navbar on the login/
-  register pages, `aria-expanded` on the mobile menu button, auth-error
-  and accent-as-text color contrast, a deduplicated `showToast`)
+- 🔒 Post-auth audit fixes, all 26 findings (see `docs/16`): atomic
+  first-account registration (closes a two-different-usernames race),
+  per-username login rate limiting, a real `ENVIRONMENT`/`FLY_APP_NAME`-based
+  signal for Secure cookies (instead of inferring it from whether
+  `SECRET_KEY` was set), a server-side minimum password length, paginated
+  download-history API/page, one shared `Storage` instance instead of two,
+  URL-allowlist validation on `/api/library/add`, a batch-download loop
+  that no longer aborts on one video's write failure, frontend auth-loss
+  detection (401/`4401` redirect to `/login`), a pinned dependency
+  lockfile (`requirements.lock`), an explicit `DATA_DIR` env var instead
+  of an implicit relative-path/volume-mount coupling, a cached
+  `registration_open()` check, a login-timing side-channel fix, a
+  WS-driven (instead of queue-length-inferred) "currently downloading"
+  indicator, plus a set of smaller UI/accessibility/contrast fixes (mobile
+  navbar on the login/register pages, `aria-expanded` on the mobile menu
+  button, auth-error and accent-as-text color contrast, a deduplicated
+  `showToast`)
 
 ### v3.0.0
 

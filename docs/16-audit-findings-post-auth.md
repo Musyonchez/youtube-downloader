@@ -3,25 +3,23 @@
 ## How this doc came to exist
 
 This doc was supposed to already exist, with findings 16-1 through 16-26,
-before implementation started -- that's the normal order (see docs/08/09's
-"audit first, modify later" ground rule, and how docs/11 -> docs/12/13
-worked). It didn't: no commit on `master`, any branch, or any worktree ever
-added it. There is no lost draft to recover -- it was never written.
-
-Given that, this pass reconstructed and implemented only the findings for
-which enough concrete detail existed to act on responsibly (file:line-level
-specifics supplied alongside the implementation task itself, covering 16
-of the 26 IDs below). The remaining 10 IDs (16-10, 16-12, 16-14, 16-15,
-16-16, 16-21 through 16-25) are listed as **not reconstructed** --
-inventing plausible-sounding security/behavior findings for them under
-real-looking IDs would be worse than leaving the gap explicit. If a real
-audit produced those findings, they should be transcribed in here directly
-(with real file:line evidence) rather than re-derived from scratch.
+before implementation started on the first pass -- that's the normal order
+(see docs/08/09's "audit first, modify later" ground rule, and how docs/11
+-> docs/12/13 worked). It didn't, as of the first implementation pass: no
+commit on `master`, any branch, or any worktree had it. That gap turned out
+to be a workflow slip, not a missing doc -- it had been written and staged
+in the main repo's working directory, but not committed before this
+isolated worktree branched off, so the worktree's git history genuinely
+never contained it. First pass therefore reconstructed and implemented only
+the 16 finding IDs specified in enough concrete detail to act on
+responsibly, and explicitly declined to invent the other 10 rather than
+fabricate plausible-sounding findings under real-looking IDs. Those 10 were
+then supplied verbatim (from the actual doc that had been written) and
+implemented in a second pass. All 26 IDs are covered below.
 
 ## Findings
 
-Each finding below is marked **Implemented** with what changed, or **Not
-reconstructed** for the ones with no available source material.
+Each finding below is marked **Implemented** with what changed.
 
 ### P1 / Immediate
 
@@ -161,13 +159,138 @@ reconstructed** for the ones with no available source material.
   the current threat model (the logged-in account itself) while noting the
   historical LAN-only context.
 
+- **16-10 — `/api/library/add` accepts an arbitrary `url` with no host
+  validation.** **Implemented.** Unlike `/api/video-info`/
+  `/api/playlist-info`, which run their `url` through
+  `searcher.validate_url`'s SSRF-safe host allowlist, `/api/library/add`
+  handed `video.url` straight to storage (and from there, eventually, to
+  yt-dlp at download time) with no check -- reachable directly, not just
+  via the normal search -> add-to-library UI path. Added the same
+  `validate_url` check before accepting the video. Low real-world severity
+  now that the app is authenticated, but inconsistent with the hardening
+  already done on the sibling routes. See `app/api/routes.py`. Test:
+  `tests/test_api_routes.py::test_add_to_library_rejects_url_with_disallowed_host`.
+
+- **16-12 — Unguarded two-write sequence per download outcome.**
+  **Implemented.** `add_to_downloaded()` then `remove_from_library()` are
+  two separate SQLite writes with no transaction spanning them; if the
+  second raised after the first committed, the exception used to propagate
+  straight out of the batch loop, aborting every video still queued behind
+  it. Wrapped `remove_from_library()` in a try/except that logs and moves
+  on to the next video instead -- the single video can still end up
+  duplicated (recorded as downloaded *and* still queued; this isn't a real
+  transaction), but that's now an isolated, logged anomaly instead of a
+  silent whole-batch abort. See `app/services/download_orchestrator.py`.
+  Test:
+  `tests/test_download_orchestrator.py::test_remove_from_library_failure_does_not_abort_the_batch`.
+
+- **16-14 — Frontend never detects auth loss mid-session.**
+  **Implemented.** `loadStatus()`/`loadQueue()` only `console.error`'d a
+  401, so an expired/logged-out-elsewhere session left the UI polling
+  forever with a frozen state and no visible explanation; the WS reconnect
+  loop didn't special-case the `4401` auth-close code either, so a
+  logged-out tab kept retrying a handshake that could only ever be
+  rejected again. `apiCall()` (api.js) now redirects to
+  `/login?next=<path>` on any 401, covering every call site including the
+  poll loops in queue.js; the WS `onclose` handler redirects the same way
+  on code `4401` instead of scheduling a reconnect. See `static/js/api.js`,
+  `static/js/websocket.js`.
+
+- **16-15 — Unpinned dependencies, no lockfile.** **Implemented.** Added
+  `requirements.lock` (full resolved dependency closure, exact versions,
+  generated from a clean venv against `requirements.txt` -- see its header
+  for the regenerate command). Dockerfile, CI, and `make install` now
+  install from it instead of `requirements.txt`'s open `>=` bounds;
+  `requirements.txt` stays as the human-edited loose source of truth. See
+  `requirements.lock`, `Dockerfile`, `.github/workflows/ci.yml`,
+  `Makefile`.
+
 ### P4 / Future
 
-- **16-26 — README changelog entry.** **Implemented.** Added an
-  "Unreleased" changelog section summarizing this pass. See `README.md`.
+- **16-16 — `registration_open()` re-queries SQLite on every render,
+  forever.** **Implemented.** It's a Jinja global called from the navbar,
+  included on every page, even though the result can only ever flip
+  0->1 once (docs/15's first-account-only design) and then stays flipped
+  for the rest of the process's life. Added `_registration_closed_cache`,
+  a module-level bool that latches `True` the first time a render observes
+  an account, skipping the query on every render after that. Integrated
+  into the same area 16-6 already touched (`register_form` now shares the
+  same `_registration_open()` helper instead of its own separate
+  `count_users()` check). See `app/main.py`. Test:
+  `tests/test_auth_routes.py::test_registration_open_caches_once_closed`.
 
-- **16-10, 16-12, 16-14, 16-15, 16-16, 16-21 through 16-25.**
-  **Not reconstructed** -- no source material (file:line evidence, impact,
-  recommended fix) was available for these IDs anywhere in the repo or
-  its history. Left as gaps rather than invented. If/when a real audit
-  produces these findings, they belong here with genuine evidence.
+- **16-21 — `data/` base dir is an implicit relative-path coupling to the
+  volume mount.** **Implemented.** Nothing actually enforced that
+  `Storage`'s default `base_dir` ("data") and fly.toml's mount destination
+  (`/srv/data`) agreed with each other -- they only did because the
+  Dockerfile's `WORKDIR` and the mount destination happened to match. A
+  future change to either could silently fall back to ephemeral storage
+  with no error. `Storage.__init__` now reads `DATA_DIR` from the
+  environment (still defaulting to `"data"` when unset, so local dev is
+  unchanged), and fly.toml sets it to the mount path explicitly. See
+  `app/storage/storage.py`, `fly.toml`. Tests: `tests/test_storage.py`
+  (new file).
+
+- **16-22 — `CORSMiddleware` still uses `allow_origins=["*"]`.**
+  **Implemented (comment only, no behavior change, as the finding
+  suggested).** Not currently exploitable -- `allow_credentials=False`
+  plus the session cookie's `same_site="lax"` both independently block a
+  credentialed cross-origin request -- but undocumented, so a future edit
+  flipping `allow_credentials` to `True` could silently create a real
+  hole. Added a comment explaining exactly why the current combination is
+  safe and what specifically must not change without re-narrowing
+  `allow_origins` first. See `app/main.py`.
+
+- **16-23 — `currentlyDownloading` UI highlight desyncs on queue-length
+  deltas.** **Implemented, via the WS-driven fix the finding preferred.**
+  It used to be inferred from "did the queue get shorter between polls",
+  which breaks if a video is added to the library mid-batch-download and
+  shifts what `queue[0]` actually is. The WebSocket `progress` message
+  already carries the real `video_id` that's actively downloading;
+  `websocket.js`'s handler now sets `currentlyDownloading` directly from
+  that instead of leaving it to be inferred, and `queue.js`'s
+  length-delta-based guess was removed (the length check that stops
+  polling once the queue is empty stays). See `static/js/websocket.js`,
+  `static/js/queue.js`.
+
+- **16-24 — Username-enumeration timing side-channel.**
+  **Implemented** (the finding flagged this as optional/low-value given
+  the single-account scope, but it was cheap enough to just close):
+  `verify_password` previously only ran at all when `get_user()` found a
+  row, so an unknown username returned measurably faster than a known
+  username with a wrong password. Login now runs a real PBKDF2
+  verification against a fixed dummy hash on the unknown-username path
+  too, so both paths cost the same. See `app/main.py`'s
+  `_DUMMY_PASSWORD_HASH`.
+
+- **16-25 — Three low-priority smells.** **Mixed: two fixed lightly, one
+  deferred with reasoning, as the finding allowed.**
+  - `_download_in_progress` stuck-forever edge case: **fixed**. Wrapped
+    the `asyncio.get_running_loop()` + `background_tasks.add_task()` pair
+    in try/except that releases the guard on any exception, so a failure
+    to actually schedule the background task can't leave every future
+    `/api/download` wedged behind a 409 forever. See
+    `app/api/routes.py::start_download`. Test:
+    `tests/test_download_task.py::test_start_download_releases_guard_if_scheduling_fails`.
+  - Synchronous PBKDF2 blocking the event loop: **fixed**. `login_submit`
+    and `register_submit` now run `hash_password`/`verify_password` via
+    `asyncio.to_thread` instead of calling them directly, so the ~50-150ms
+    of CPU-bound hashing per login/register no longer stalls the whole
+    process's single event loop (WS broadcasts, other requests) for that
+    duration. See `app/main.py`.
+  - Blocking `threading.Lock()` held inside async route handlers:
+    **deferred, with reasoning documented in place** (not fixed) --
+    both `app/api/routes.py`'s `_download_lock` and
+    `app/storage/db.py`'s `Database._lock` are acquired from *both* an
+    async route handler (event-loop thread) *and* a plain sync function
+    that FastAPI's `BackgroundTasks` runs in a worker thread, so they
+    genuinely cross threads; `asyncio.Lock` is explicitly not thread-safe
+    and would be actively wrong here, not just a style swap. The
+    event-loop stall itself is real but negligible -- every critical
+    section under either lock is a handful of attribute reads or sqlite3
+    calls with no I/O, not comparable to the multi-second network/disk
+    I/O the rest of this app already does per request. See the comments
+    left at both `_lock` declarations.
+
+- **16-26 — README changelog entry.** **Implemented.** Added an
+  "Unreleased" changelog section summarizing both passes. See `README.md`.
