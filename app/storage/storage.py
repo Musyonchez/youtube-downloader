@@ -17,8 +17,21 @@ class Storage:
 
     _lock = threading.Lock()
 
-    def __init__(self, base_dir: str = "data"):
-        self.base_dir = Path(base_dir)
+    def __init__(self, base_dir: str | None = None):
+        # `base_dir` is only ever left at its default in production
+        # (app/api/routes.py's module-level `storage = Storage()`) --
+        # every test passes an explicit tmp_path. That default used to be
+        # the bare relative string "data", coupled to persistent storage
+        # only *implicitly*: it happens to land on the Fly volume mount
+        # because the Dockerfile's WORKDIR and fly.toml's mount destination
+        # both happen to agree on /srv/data, with nothing actually
+        # enforcing that agreement (docs/16, 16-21) -- a future change to
+        # either one could silently make this resolve to the container's
+        # ephemeral filesystem instead, losing the account/library/history
+        # on every restart with no error. DATA_DIR makes the coupling
+        # explicit: unset, it still defaults to "data" (unchanged local-dev
+        # behavior); fly.toml now sets it to the mount path directly.
+        self.base_dir = Path(base_dir if base_dir is not None else os.environ.get("DATA_DIR", "data"))
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.config_file = self.base_dir / "config.json"
         self.db = Database(str(self.base_dir / "downloads.db"))

@@ -58,6 +58,16 @@ class Database:
     than a small ORM for what's still a very small app.
     """
 
+    # Deliberately threading.Lock, not asyncio.Lock, even though most
+    # callers reach this from async route handlers (docs/16, 16-25 flagged
+    # this, deferred rather than changed -- see app/api/routes.py's
+    # _download_lock for the full reasoning): download_task runs this from
+    # a worker thread, not the event loop, so this lock genuinely crosses
+    # threads and asyncio.Lock (not thread-safe) would be wrong here, not
+    # just stylistically different. The brief event-loop stall from a
+    # blocking acquisition is real but negligible -- every critical section
+    # here is a handful of sqlite3 calls, not comparable to the
+    # multi-second network/disk I/O the rest of this app already does.
     _lock = threading.Lock()
 
     def __init__(self, db_path: str = "downloads.db"):

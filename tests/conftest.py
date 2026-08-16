@@ -27,5 +27,10 @@ def log_in_test_client(client, tmp_path, monkeypatch):
     # unrelated earlier test's failures for the same username (e.g.
     # "testuser") can't leave this login stuck in a cooldown.
     monkeypatch.setattr(main, "_failed_login_attempts", {})
+    # registration_open()'s module-level cache (docs/16, 16-16) latches
+    # True forever once any test's storage shows count_users() > 0 --
+    # reset it per test too, or a later test with a fresh, empty isolated
+    # storage would still see registration as closed.
+    monkeypatch.setattr(main, "_registration_closed_cache", False)
     resp = client.post("/login", data={"username": "testuser", "password": "testpass123"})
     assert resp.status_code in (200, 303), f"test helper login failed: {resp.status_code} {resp.text}"

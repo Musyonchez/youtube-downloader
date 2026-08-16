@@ -18,8 +18,9 @@ from app.storage.storage import Storage
 def isolated_client(tmp_path, monkeypatch):
     storage = Storage(str(tmp_path))
     monkeypatch.setattr(main, "auth_storage", storage)
-    # See tests/conftest.py's log_in_test_client for why this is reset per test.
+    # See tests/conftest.py's log_in_test_client for why these are reset per test.
     monkeypatch.setattr(main, "_failed_login_attempts", {})
+    monkeypatch.setattr(main, "_registration_closed_cache", False)
     return TestClient(app), storage
 
 
@@ -268,6 +269,24 @@ def test_login_rate_limit_is_per_username(tmp_path, monkeypatch):
 
     resp = client.post("/login", data={"username": "bob", "password": "bobs-password"}, follow_redirects=False)
     assert resp.status_code == 303
+
+
+def test_registration_open_caches_once_closed(tmp_path, monkeypatch):
+    """docs/16, 16-16: once registration_open() observes an account, it
+    must never query storage again -- registration can only ever go from
+    open to closed once, for the process's whole lifetime."""
+    client, storage = isolated_client(tmp_path, monkeypatch)
+
+    assert main._registration_open() is True
+
+    storage.create_user("alice", "pbkdf2_sha256$260000$c2FsdA==$aGFzaA==")
+    assert main._registration_open() is False
+    assert main._registration_closed_cache is True
+
+    # Even if storage were to (impossibly) report zero users again, the
+    # cached answer must not flip back open.
+    monkeypatch.setattr(storage, "count_users", lambda: 0)
+    assert main._registration_open() is False
 
 
 def test_login_wrong_password_rejected(tmp_path, monkeypatch):

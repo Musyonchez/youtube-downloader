@@ -24,6 +24,21 @@ searcher = YouTubeSearcher()
 # this, two overlapping background tasks can both pass download_audio()'s
 # "does the file already exist" check before either has written anything,
 # then both invoke yt-dlp against the *same* output path at the same time.
+#
+# Deliberately threading.Lock, not asyncio.Lock (docs/16, 16-25 flagged
+# this as worth a second look -- deferred, not fixed, for this reason):
+# this lock is acquired both from start_download (an async route handler,
+# running on the event loop thread) and from download_task (a plain sync
+# function, which FastAPI's BackgroundTasks runs in a worker thread via
+# anyio's threadpool) -- it genuinely crosses threads, so it has to be a
+# real OS-level lock. asyncio.Lock is explicitly not thread-safe and would
+# be actively wrong here, not just a style swap. The other half of that
+# finding -- a blocking lock acquisition briefly stalling the event loop
+# inside an async handler -- is real but negligible in practice: every
+# critical section under this lock (and under db.Database._lock, same
+# reasoning, also legitimately cross-thread) is a handful of attribute
+# reads/writes with no I/O, sub-microsecond in practice, vs. the
+# multi-second network/disk I/O everything else in this app already does.
 _download_lock = threading.Lock()
 _download_in_progress = False
 
@@ -164,7 +179,21 @@ async def get_library() -> dict:
 
 @router.post("/api/library/add")
 async def add_to_library(video: VideoItem) -> dict:
-    """Add video to library."""
+    """Add video to library.
+
+    Unlike /api/video-info and /api/playlist-info, this route's `video.url`
+    was never run through searcher.validate_url's host allowlist (docs/16,
+    16-10) -- video_info/playlist-info are the normal path here (search
+    result -> add to library), but this route can be hit directly with an
+    arbitrary `url`, and download_orchestrator.py hands that URL straight
+    to yt-dlp at download time. Low real-world severity now that every
+    route requires a session (docs/15), but worth being consistent with
+    the SSRF hardening already done on the sibling routes.
+    """
+    is_valid, _ = searcher.validate_url(video.url)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+
     video_dict = video.dict()
 
     # Check if already exists
@@ -270,10 +299,27 @@ async def start_download(background_tasks: BackgroundTasks, video_ids: list[str]
             raise HTTPException(status_code=409, detail="A download is already in progress")
         _download_in_progress = True
 
-    # Start download in background, passing the current event loop so the
-    # worker thread can broadcast progress back to WebSocket clients.
-    loop = asyncio.get_running_loop()
-    background_tasks.add_task(download_task, video_ids, loop)
+    # download_task's own `finally` (below) is what normally releases the
+    # guard -- but that only runs once the background task actually starts
+    # executing. If anything between the `_download_in_progress = True`
+    # above and a successful add_task() were to raise (docs/16, 16-25: a
+    # theoretical path, not observed -- get_running_loop() can't fail
+    # inside a running async route handler, and add_task() itself just
+    # appends to a list), the guard would be stuck True forever with no
+    # background task ever scheduled to release it, wedging every future
+    # /api/download behind a 409 until the process restarts. Cheap
+    # insurance either way: release it here too on that path, then
+    # re-raise so the caller still sees a real error instead of a
+    # misleading success.
+    try:
+        # Start download in background, passing the current event loop so
+        # the worker thread can broadcast progress back to WebSocket clients.
+        loop = asyncio.get_running_loop()
+        background_tasks.add_task(download_task, video_ids, loop)
+    except Exception:
+        with _download_lock:
+            _download_in_progress = False
+        raise
 
     count = len(video_ids) if video_ids else len(library)
 

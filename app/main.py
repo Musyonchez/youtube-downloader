@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """FastAPI web application for YouTube MP3 downloader."""
+import asyncio
 import logging
 import os
 import secrets
@@ -81,6 +82,19 @@ IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONME
 # populate request.session before SessionAuthMiddleware reads it -- is
 # added last here, even though it's conceptually "first" in the request
 # flow. Verified empirically with a throwaway script during development.
+# allow_origins=["*"] dates back to this app's original LAN-tool design,
+# before docs/15's session auth existed -- left as-is post-auth (docs/16,
+# 16-22) because it's still safe *in this exact combination*:
+# allow_credentials=False means the browser will not attach cookies to a
+# cross-origin request here regardless of what allow_origins says, and the
+# session cookie itself is same_site="lax" (see SessionMiddleware below),
+# which independently blocks it from riding along on a cross-site request
+# in the first place. If either of those ever changes -- most importantly,
+# flipping allow_credentials to True -- allow_origins=["*"] stops being
+# safe and must be narrowed to a real origin allowlist first; the two
+# together (wildcard origins + credentialed requests) is a combination the
+# CORS spec itself forbids browsers from honoring, but don't rely on that
+# forbidding it here -- narrow allow_origins explicitly instead.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -113,10 +127,31 @@ templates.env.globals["current_year"] = lambda: datetime.now().year
 # {{ current_user(request) }} without editing every route handler's context
 # dict -- `request` is already in context on every TemplateResponse call.
 templates.env.globals["current_user"] = lambda request: request.session.get("user")
-# Drives the navbar's Register link (docs/15): only shown while no account
-# exists yet. Re-checks storage on every render rather than caching, since
-# it must flip to hidden the instant the first account is created.
-templates.env.globals["registration_open"] = lambda: auth_storage.count_users() == 0
+# Registration can only ever flip open -> closed, exactly once, for the
+# lifetime of this process (docs/15's first-account-only design) -- once
+# closed it can never reopen. _registration_closed_cache (docs/16, 16-16)
+# takes advantage of that one-way flip: registration_open() is a Jinja
+# global called on *every* template render (it's in the navbar, included
+# on every page), so re-querying SQLite there forever -- long after the
+# one account was created -- is pure waste. Once a render observes
+# count_users() > 0, the cache flips True and every render after that
+# skips the query entirely; before that first flip, it still checks
+# storage on every render (so a brand-new account is picked up on the
+# very next render, same as before this change).
+_registration_closed_cache = False
+
+
+def _registration_open() -> bool:
+    global _registration_closed_cache
+    if _registration_closed_cache:
+        return False
+    if auth_storage.count_users() > 0:
+        _registration_closed_cache = True
+        return False
+    return True
+
+
+templates.env.globals["registration_open"] = _registration_open
 
 
 def _safe_next_path(next_path: str | None) -> str:
@@ -224,6 +259,20 @@ def _clear_login_failures(username: str) -> None:
     _failed_login_attempts.pop(username, None)
 
 
+# A username-enumeration timing side-channel (docs/16, 16-24):
+# verify_password only ran at all when auth_storage.get_user() found a row,
+# so "unknown username" returned faster than "known username, wrong
+# password" (PBKDF2 at 260k iterations is deliberately slow, see
+# app/passwords.py). Low value here since exactly one account can ever
+# exist (docs/15) -- there's only ever one username to enumerate, and
+# whoever registered it already knows it -- but cheap to close anyway:
+# run a real PBKDF2 verification against this fixed dummy hash on the
+# "unknown username" path too, so both paths cost the same regardless of
+# which branch is taken. The password itself is irrelevant -- this hash
+# will never match anything a real user submits.
+_DUMMY_PASSWORD_HASH = hash_password("this-hash-only-exists-to-equalize-login-timing")
+
+
 @app.post("/login")
 async def login_submit(
     request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("")
@@ -241,8 +290,23 @@ async def login_submit(
             status_code=429,
         )
 
+    # verify_password runs PBKDF2 at 260k iterations (app/passwords.py) --
+    # deliberately slow, and deliberately synchronous (stdlib hashlib has
+    # no async variant). Run via asyncio.to_thread (docs/16, 16-25) rather
+    # than calling it directly, so that ~50-150ms of CPU-bound hashing
+    # doesn't block this process's single event loop -- and everything else
+    # it's serving (WebSocket progress broadcasts, other requests) -- for
+    # the duration of every login attempt.
     user = auth_storage.get_user(username)
-    if user is None or not verify_password(password, user["password_hash"]):
+    if user is None:
+        await asyncio.to_thread(verify_password, password, _DUMMY_PASSWORD_HASH)  # see its docstring
+        _record_login_failure(username)
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"next": next, "error": "Incorrect username or password."},
+            status_code=401,
+        )
+    if not await asyncio.to_thread(verify_password, password, user["password_hash"]):
         _record_login_failure(username)
         return templates.TemplateResponse(
             request, "login.html",
@@ -263,7 +327,7 @@ async def register_form(request: Request):
     in register_submit below."""
     if request.session.get("user"):
         return RedirectResponse("/app/name", status_code=303)
-    closed = auth_storage.count_users() > 0
+    closed = not _registration_open()
     return templates.TemplateResponse(request, "register.html", {"closed": closed})
 
 
@@ -298,7 +362,11 @@ async def register_submit(request: Request, username: str = Form(...), password:
             status_code=400,
         )
 
-    created = auth_storage.create_user_if_first(username, hash_password(password))
+    # hash_password (app/passwords.py) is the same synchronous, CPU-bound
+    # PBKDF2 call as verify_password above -- run off the event loop for
+    # the same reason (docs/16, 16-25).
+    password_hash = await asyncio.to_thread(hash_password, password)
+    created = auth_storage.create_user_if_first(username, password_hash)
     if not created:
         return HTMLResponse("<h1>Registration is closed.</h1>", status_code=403)
 

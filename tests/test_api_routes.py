@@ -41,6 +41,21 @@ def test_status_reflects_empty_storage(tmp_path, monkeypatch):
     assert resp.json() == {"library_count": 0, "downloaded_count": 0}
 
 
+def test_add_to_library_rejects_url_with_disallowed_host(tmp_path, monkeypatch):
+    """docs/16, 16-10: /api/video-info and /api/playlist-info already run
+    their url through searcher.validate_url's host allowlist; this route
+    accepts an arbitrary `url` field directly (not necessarily one that
+    came from a search result) and hands it straight to yt-dlp at download
+    time, so it needs the same check."""
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp = client.post("/api/library/add", json={**VIDEO, "url": "https://evil.example.com/?x=youtube.com"})
+
+    assert resp.status_code == 400
+    library = client.get("/api/library").json()["library"]
+    assert library == []
+
+
 def test_add_to_library_then_appears_in_library_and_status(tmp_path, monkeypatch):
     isolated_storage(tmp_path, monkeypatch)
 
