@@ -11,7 +11,7 @@ from app.services.download_orchestrator import run_download_task
 from app.services.downloader import YouTubeDownloader
 from app.services.search import YouTubeSearcher
 from app.storage.storage import Storage
-from app.utils import validate_download_dir
+from app.utils import IS_PRODUCTION, validate_download_dir
 from app.ws_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -297,7 +297,34 @@ def download_task(video_ids: list[str] | None, loop: asyncio.AbstractEventLoop):
 
 @router.post("/api/download")
 async def start_download(background_tasks: BackgroundTasks, video_ids: list[str] | None = None) -> dict:
-    """Start downloading library (or specific videos)."""
+    """Start downloading library (or specific videos).
+
+    Refused entirely on the Fly.io deployment (IS_PRODUCTION) -- actual
+    downloads spawn yt-dlp/ffmpeg processes and write real files, which
+    burns through Fly's free-trial compute/bandwidth for no benefit: the
+    hosted instance exists for browsing/queueing from anywhere (web app,
+    Chrome extension), the real downloading is meant to happen on a
+    locally-run instance instead, where it's free and has real disk to
+    write to. Queueing (add-to-library) is untouched -- that's a cheap DB
+    write, not the expensive part. Client-IP-based gating was considered
+    and rejected: Fly proxies every request, so the app never sees a real
+    client IP to check against, and IP-checking would also have broken
+    downloads from other devices on the user's home LAN (this app's own
+    "any device on your network" feature) if applied to the local
+    deployment too. Environment-based gating gets the actual goal (no
+    downloads on Fly, ever, regardless of who's asking) without that
+    collateral damage.
+    """
+    if IS_PRODUCTION:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Downloads are disabled on the hosted deployment to avoid "
+                "using up Fly.io's free-trial resources. Run this app "
+                "locally (see README.md) to actually download."
+            ),
+        )
+
     global _download_in_progress
 
     library = storage.load_library()

@@ -95,3 +95,46 @@ def test_start_download_releases_guard_if_scheduling_fails(tmp_path, monkeypatch
 
     assert raised is not None
     assert routes._download_in_progress is False
+
+
+def test_start_download_refused_on_production_deployment(tmp_path, monkeypatch):
+    """The Fly.io deployment must never actually download -- only queue
+    (see start_download's docstring). Checked via IS_PRODUCTION
+    (environment), not client IP, since Fly proxies every request so the
+    app never sees a real client IP to gate on."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+    monkeypatch.setattr(routes, 'storage', storage)
+    monkeypatch.setattr(routes, 'IS_PRODUCTION', True)
+
+    async def call():
+        await routes.start_download(BackgroundTasks())
+
+    try:
+        asyncio.run(call())
+        raised = None
+    except HTTPException as e:
+        raised = e
+
+    assert raised is not None
+    assert raised.status_code == 403
+    assert 'fly.io' in raised.detail.lower()
+
+
+def test_start_download_allowed_when_not_production(tmp_path, monkeypatch):
+    """Regression guard the other direction -- a non-empty library on a
+    non-production deployment must still reach the normal scheduling path,
+    not get wrongly refused by the IS_PRODUCTION check."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+    monkeypatch.setattr(routes, 'storage', storage)
+    monkeypatch.setattr(routes, 'IS_PRODUCTION', False)
+    monkeypatch.setattr(routes, '_download_in_progress', False)
+
+    async def call():
+        with patch('asyncio.get_running_loop', return_value=MagicMock()):
+            return await routes.start_download(BackgroundTasks())
+
+    result = asyncio.run(call())
+
+    assert 'started downloading' in result['message'].lower()

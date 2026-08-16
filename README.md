@@ -349,6 +349,14 @@ just aren't marked `Secure` outside a real deploy (detected via Fly's own
 `FLY_APP_NAME` env var, or an explicit `ENVIRONMENT=production`), since a
 `Secure` cookie is never sent back over plain HTTP.
 
+**Downloads are disabled on the hosted deployment.** `/api/download`
+refuses with a 403 on Fly (same `IS_PRODUCTION` check as above), so
+browsing/searching/queueing works from anywhere — the web app, the Chrome
+extension — but actually downloading (spawning yt-dlp/ffmpeg, writing
+files) only ever runs on a locally-hosted instance, to avoid burning
+through Fly's free-trial compute/bandwidth. Queue videos from wherever's
+convenient, then run the actual download from your local/home instance.
+
 ### Contributing
 
 `master` is branch-protected — see [CONTRIBUTING.md](CONTRIBUTING.md) for
