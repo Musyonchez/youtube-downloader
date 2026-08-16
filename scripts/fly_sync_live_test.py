@@ -39,6 +39,7 @@ What it does:
      more polluted than it needs to be for the test to be meaningful.
 """
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -98,25 +99,34 @@ def main() -> None:
             sys.exit(1)
         print("   OK -- queued on Fly.")
 
+    # Deliberately not `tempfile.TemporaryDirectory()` as a context manager:
+    # Database (app/storage/db.py) has no close() method (it's a long-lived
+    # connection for the app's whole process lifetime, never closed anywhere
+    # today) and sqlite3 on Windows keeps the .db file locked for as long as
+    # the connection object is alive -- the context manager's own cleanup
+    # would then fail with a PermissionError the moment `local_storage`
+    # (and its Database) is still in scope. Using mkdtemp() + a best-effort
+    # ignore_errors=True rmtree in the finally block avoids that without
+    # adding a close() lifecycle to production code just for this script.
+    tmp_dir = tempfile.mkdtemp(prefix="fly_sync_live_test_")
     try:
-        with tempfile.TemporaryDirectory(prefix="fly_sync_live_test_") as tmp_dir:
-            local_storage = Storage(tmp_dir)
+        local_storage = Storage(tmp_dir)
 
-            print("2. Running pull_from_fly() against an isolated local Storage...")
-            result = fly_sync.pull_from_fly(local_storage)
-            print(f"   pull result: {result}")
-            if local_storage.get_item_status(VIDEO_ID) != "queued":
-                print(f"   FAILED: {VIDEO_ID} did not land in the local queue after pull.", file=sys.stderr)
-                sys.exit(1)
-            print("   OK -- video is in the local queue.")
+        print("2. Running pull_from_fly() against an isolated local Storage...")
+        result = fly_sync.pull_from_fly(local_storage)
+        print(f"   pull result: {result}")
+        if local_storage.get_item_status(VIDEO_ID) != "queued":
+            print(f"   FAILED: {VIDEO_ID} did not land in the local queue after pull.", file=sys.stderr)
+            sys.exit(1)
+        print("   OK -- video is in the local queue.")
 
-            print("3. Simulating a completed local download via push_download_outcome() "
-                  "(no yt-dlp invoked)...")
-            fly_sync.push_download_outcome({
-                **VIDEO,
-                "success": True,
-                "file_path": str(Path(tmp_dir) / "fly_sync_live_test.mp3"),
-            })
+        print("3. Simulating a completed local download via push_download_outcome() "
+              "(no yt-dlp invoked)...")
+        fly_sync.push_download_outcome({
+            **VIDEO,
+            "success": True,
+            "file_path": str(Path(tmp_dir) / "fly_sync_live_test.mp3"),
+        })
 
         with httpx.Client(timeout=30.0) as client:
             _login(client, base_url, username, password)
@@ -149,6 +159,7 @@ def main() -> None:
             print("   (downloaded-history row for this test video_id is left in place -- "
                   "there's no delete-history endpoint by design; it's clearly labeled "
                   "'fly_sync_live_test throwaway entry' if manual cleanup is ever wanted.)")
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     print("\nAll live fly-sync checks passed.")
 
