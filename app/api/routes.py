@@ -7,6 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.services import fly_sync
 from app.services.download_orchestrator import run_download_task
 from app.services.downloader import YouTubeDownloader
 from app.services.search import YouTubeSearcher
@@ -78,6 +79,21 @@ class ConfigUpdate(BaseModel):
     audio_quality: AudioQuality | None = None
     format: Literal["mp3"] | None = None
     download_dir: str | None = None
+
+
+class DownloadOutcome(BaseModel):
+    """Body for /api/downloaded/record -- a download outcome that happened
+    elsewhere (a local instance's Fly-sync push, see
+    app/services/fly_sync.py's push_download_outcome), not a real download
+    that ran on this deployment."""
+    video_id: str
+    title: str
+    channel: str
+    duration: str
+    url: str
+    thumbnail: str
+    success: bool
+    file_path: str | None = None
 
 
 # API Endpoints
@@ -252,6 +268,71 @@ async def get_downloaded(
     """
     downloaded = storage.load_downloaded(limit=limit, offset=offset, descending=True)
     return {"downloaded": downloaded, "total": storage.count_downloaded()}
+
+
+@router.post("/api/downloaded/record")
+async def record_downloaded_externally(outcome: DownloadOutcome) -> dict:
+    """Records a download outcome that happened elsewhere (the local
+    instance, via its Fly-sync push) without running yt-dlp here -- this is
+    how the Fly deployment's history/queue stay in sync with downloads that
+    actually happened locally, without ever doing the download work itself
+    (downloads are refused entirely on this deployment, see IS_PRODUCTION /
+    start_download). Idempotent: safe to call for a video_id not currently
+    in the library (just records history), and safe to call more than once
+    for the same video_id -- add_to_downloaded is an upsert (INSERT OR
+    REPLACE, see app/storage/db.py), and remove_from_library's DELETE is
+    naturally a no-op if the row is already gone.
+
+    Works regardless of IS_PRODUCTION -- this is cheap bookkeeping (two
+    SQLite writes), not a download, so unlike /api/download it's
+    intentionally not gated on it. Mirrors run_download_task's own
+    record-then-dequeue sequence (app/services/download_orchestrator.py)
+    exactly, so this deployment ends up in the same state a real local
+    download would have left it in.
+    """
+    storage.add_to_downloaded(outcome.dict())
+    storage.remove_from_library(outcome.video_id)
+    return {"message": "Recorded", "video_id": outcome.video_id}
+
+
+@router.get("/api/sync/status")
+async def get_sync_status() -> dict:
+    """Whether Fly sync is available on this instance -- lets the frontend
+    decide whether to show the "Sync from Fly" button at all, instead of
+    always showing it and having a click 400/403. True only when this is
+    not the Fly deployment itself (IS_PRODUCTION) and FLY_SYNC_URL/
+    FLY_SYNC_USERNAME/FLY_SYNC_PASSWORD are all set (see
+    app/services/fly_sync.py's is_configured)."""
+    return {"available": (not IS_PRODUCTION) and fly_sync.is_configured()}
+
+
+@router.post("/api/sync/pull")
+async def sync_pull() -> dict:
+    """Pull whatever's currently queued on the live Fly app's library into
+    this local instance's own queue (storage.add_to_library, same as any
+    other queue-add), skipping anything already known locally (already
+    queued or already downloaded here). Never triggers a download -- the
+    user still starts that normally via the existing Download button/flow.
+
+    Local-only, matching /api/download's own IS_PRODUCTION gate: the Fly
+    deployment must never call out to sync itself, only ever receive calls
+    made by a local instance.
+    """
+    if IS_PRODUCTION:
+        raise HTTPException(status_code=403, detail="Fly sync is a local-only feature.")
+    if not fly_sync.is_configured():
+        raise HTTPException(
+            status_code=400,
+            detail="Fly sync is not configured. Set FLY_SYNC_URL, FLY_SYNC_USERNAME, and FLY_SYNC_PASSWORD.",
+        )
+    try:
+        result = fly_sync.pull_from_fly(storage)
+    except fly_sync.FlySyncError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return {
+        "message": f"Pulled {result['pulled']} video(s) from Fly ({result['skipped']} already known)",
+        **result,
+    }
 
 
 @router.get("/api/config")

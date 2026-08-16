@@ -357,6 +357,36 @@ files) only ever runs on a locally-hosted instance, to avoid burning
 through Fly's free-trial compute/bandwidth. Queue videos from wherever's
 convenient, then run the actual download from your local/home instance.
 
+**Keeping the local and Fly databases in sync.** The Fly deployment and a
+locally-run instance each have their own, completely separate SQLite
+database — something queued via the Fly-hosted web app or Chrome extension
+is otherwise invisible to your local instance, and a download that happens
+locally never updates Fly's history/queue on its own. A local-only Fly-sync
+feature bridges that gap, in both directions:
+
+- **Pull**: the local instance's "Sync from Fly" button (or `POST
+  /api/sync/pull`) fetches whatever's currently queued on the live Fly
+  app and adds anything not already known locally into the local queue —
+  it never auto-starts a download, you still trigger that normally.
+- **Push**: after any real local download finishes (success or failure),
+  the local instance tells the live Fly app what happened, so Fly's
+  history/queue reflect it too — without Fly ever running yt-dlp itself.
+
+This only ever runs on a locally-run instance (never on Fly itself — same
+`IS_PRODUCTION` gating as the download block above) and only once
+configured via three environment variables, none of which are ever stored
+in the database or committed, same trust model as `SECRET_KEY`:
+
+- `FLY_SYNC_URL` — the live Fly app's URL, e.g. `https://yt-mp3-downloader.fly.dev`
+- `FLY_SYNC_USERNAME` — the account username to log in with on the Fly app
+- `FLY_SYNC_PASSWORD` — that account's password
+
+If any of the three is unset, sync is simply unavailable — no error, no
+crash, and the "Sync from Fly" button doesn't render at all (`GET
+/api/sync/status` tells the frontend whether it's configured). A push that
+fails (network blip, Fly down, expired credentials) is logged and
+swallowed — it never blocks or fails the local download it follows.
+
 ### Contributing
 
 `master` is branch-protected — see [CONTRIBUTING.md](CONTRIBUTING.md) for

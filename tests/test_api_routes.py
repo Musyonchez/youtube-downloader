@@ -230,3 +230,225 @@ def test_get_statuses_rejects_over_200_ids(tmp_path, monkeypatch):
     resp = client.post("/api/statuses", json={"video_ids": [f"id{i}" for i in range(201)]})
 
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# /api/downloaded/record -- Fly-sync push target (docs: "Give the local
+# instance a Fly sync mechanism"). Records a download outcome that happened
+# elsewhere (a local instance) without running yt-dlp here.
+# ---------------------------------------------------------------------------
+
+OUTCOME = {**VIDEO, "success": True, "file_path": "/downloads/Test Song.mp3"}
+
+
+def test_record_downloaded_externally_adds_history_and_does_not_require_library(tmp_path, monkeypatch):
+    """Safe to call for a video_id not currently in the library -- just
+    records history."""
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp = client.post("/api/downloaded/record", json=OUTCOME)
+
+    assert resp.status_code == 200
+    assert resp.json()["video_id"] == "abc123"
+    assert client.get("/api/status").json()["downloaded_count"] == 1
+    downloaded = client.get("/api/downloaded").json()["downloaded"]
+    assert downloaded[0]["video_id"] == "abc123"
+    assert downloaded[0]["success"] is True
+
+
+def test_record_downloaded_externally_removes_from_library_if_present(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    client.post("/api/library/add", json=VIDEO)
+
+    resp = client.post("/api/downloaded/record", json=OUTCOME)
+
+    assert resp.status_code == 200
+    assert client.get("/api/status").json() == {"library_count": 0, "downloaded_count": 1}
+
+
+def test_record_downloaded_externally_is_idempotent(tmp_path, monkeypatch):
+    """Safe to call more than once for the same video_id -- matches
+    add_to_downloaded's upsert (INSERT OR REPLACE) semantics, no duplicate
+    rows and no error on the second call."""
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp1 = client.post("/api/downloaded/record", json=OUTCOME)
+    resp2 = client.post("/api/downloaded/record", json=OUTCOME)
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert client.get("/api/status").json()["downloaded_count"] == 1
+
+
+def test_record_downloaded_externally_records_failures_too(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp = client.post("/api/downloaded/record", json={**VIDEO, "success": False, "file_path": None})
+
+    assert resp.status_code == 200
+    downloaded = client.get("/api/downloaded").json()["downloaded"]
+    assert downloaded[0]["success"] is False
+    # A failed download must not count as "downloaded" for status purposes.
+    assert client.post("/api/statuses", json={"video_ids": ["abc123"]}).json() == {"statuses": {"abc123": "new"}}
+
+
+# ---------------------------------------------------------------------------
+# /api/sync/status and /api/sync/pull -- local-only Fly sync.
+# ---------------------------------------------------------------------------
+
+def test_sync_status_unavailable_when_not_configured(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.delenv("FLY_SYNC_URL", raising=False)
+    monkeypatch.delenv("FLY_SYNC_USERNAME", raising=False)
+    monkeypatch.delenv("FLY_SYNC_PASSWORD", raising=False)
+
+    resp = client.get("/api/sync/status")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"available": False}
+
+
+def test_sync_status_available_when_configured_and_not_production(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", False)
+    monkeypatch.setenv("FLY_SYNC_URL", "https://example.fly.dev")
+    monkeypatch.setenv("FLY_SYNC_USERNAME", "someone")
+    monkeypatch.setenv("FLY_SYNC_PASSWORD", "secret")
+
+    resp = client.get("/api/sync/status")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"available": True}
+
+
+def test_sync_status_unavailable_on_production_even_if_configured(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", True)
+    monkeypatch.setenv("FLY_SYNC_URL", "https://example.fly.dev")
+    monkeypatch.setenv("FLY_SYNC_USERNAME", "someone")
+    monkeypatch.setenv("FLY_SYNC_PASSWORD", "secret")
+
+    resp = client.get("/api/sync/status")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"available": False}
+
+
+def test_sync_pull_refused_on_production(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", True)
+
+    resp = client.post("/api/sync/pull")
+
+    assert resp.status_code == 403
+
+
+def test_sync_pull_400_when_not_configured(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", False)
+    monkeypatch.delenv("FLY_SYNC_URL", raising=False)
+    monkeypatch.delenv("FLY_SYNC_USERNAME", raising=False)
+    monkeypatch.delenv("FLY_SYNC_PASSWORD", raising=False)
+
+    resp = client.post("/api/sync/pull")
+
+    assert resp.status_code == 400
+
+
+def test_sync_pull_adds_only_unknown_items(tmp_path, monkeypatch):
+    """Anything already known locally (queued or downloaded) is skipped,
+    not re-added -- makes a repeated pull idempotent."""
+    storage = isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", False)
+    monkeypatch.setenv("FLY_SYNC_URL", "https://example.fly.dev")
+    monkeypatch.setenv("FLY_SYNC_USERNAME", "someone")
+    monkeypatch.setenv("FLY_SYNC_PASSWORD", "secret")
+
+    # abc123 already queued locally, xyz789 already downloaded locally --
+    # both must be skipped. brand_new isn't known locally at all.
+    storage.add_to_library(VIDEO)
+    storage.add_to_downloaded({**VIDEO, "video_id": "xyz789", "success": True, "file_path": "/x.mp3"})
+    brand_new = {**VIDEO, "video_id": "brand_new"}
+
+    remote_library = [VIDEO, {**VIDEO, "video_id": "xyz789"}, brand_new]
+
+    class FakeResponse:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self._payload = payload or {}
+
+        def json(self):
+            return self._payload
+
+    class FakeClient:
+        def __init__(self, timeout=None):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def post(self, url, data=None, json=None):
+            assert url == "https://example.fly.dev/login"
+            return FakeResponse(303)
+
+        def get(self, url):
+            assert url == "https://example.fly.dev/api/library"
+            return FakeResponse(200, {"library": remote_library})
+
+    import httpx as httpx_module
+
+    from app.services import fly_sync
+    monkeypatch.setattr(fly_sync, "httpx", type("M", (), {"Client": FakeClient, "HTTPError": httpx_module.HTTPError}))
+
+    resp = client.post("/api/sync/pull")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["pulled"] == 1
+    assert body["skipped"] == 2
+
+    library = client.get("/api/library").json()["library"]
+    ids = {v["video_id"] for v in library}
+    assert ids == {"abc123", "brand_new"}
+
+
+def test_sync_pull_surfaces_login_failure_as_502(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(routes, "IS_PRODUCTION", False)
+    monkeypatch.setenv("FLY_SYNC_URL", "https://example.fly.dev")
+    monkeypatch.setenv("FLY_SYNC_USERNAME", "someone")
+    monkeypatch.setenv("FLY_SYNC_PASSWORD", "wrong")
+
+    class FakeResponse:
+        status_code = 401
+
+        def json(self):
+            return {}
+
+    class FakeClient:
+        def __init__(self, timeout=None):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def post(self, url, data=None, json=None):
+            return FakeResponse()
+
+        def get(self, url):
+            raise AssertionError("should not fetch library after a failed login")
+
+    import httpx as httpx_module
+
+    from app.services import fly_sync
+    monkeypatch.setattr(fly_sync, "httpx", type("M", (), {"Client": FakeClient, "HTTPError": httpx_module.HTTPError}))
+
+    resp = client.post("/api/sync/pull")
+
+    assert resp.status_code == 502

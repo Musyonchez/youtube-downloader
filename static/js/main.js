@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadStatus();
     await loadQueue();
     await loadConfig();
+    await loadSyncStatus();
     updateQueueUI();
     setupWebSocket();
 

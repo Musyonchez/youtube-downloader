@@ -162,6 +162,14 @@
                 <button onclick="clearQueue()" id="clear-btn" class="btn-secondary" disabled>
                     Clear
                 </button>
+                <!-- Local-only: pulls whatever's queued on the live Fly app
+                     into this instance's queue (GET /api/sync/status,
+                     POST /api/sync/pull -- see app/api/routes.py). Hidden
+                     until loadSyncStatus() (static/js/api.js) confirms Fly
+                     sync is actually configured, so it never just 400s. -->
+                <button onclick="syncFromFly()" id="sync-btn" class="btn-secondary" style="display: none;">
+                    Sync from Fly
+                </button>
             </div>
         </aside>
     </div>
