@@ -105,18 +105,38 @@ secret:
 flyctl tokens create deploy -x 999999h | gh secret set FLY_API_TOKEN
 ```
 
-## Repo structure note: the planned browser extension
+## Repo structure note: the Chrome extension
 
-A browser extension is planned for this same repo later. Plan: a sibling
-top-level directory (`extension/`), not a restructure of the existing
-app. Already accounted for:
+The Chrome extension (Manifest V3, `extension/`) landed as a sibling
+top-level directory, not a restructure of the existing app — exactly the
+plan this section used to describe before it was built. See
+`extension/README.md` for what it does, how to load it unpacked for
+development, and how it authenticates. The short version:
 
-- `.dockerignore` excludes `extension/` — it'll never end up in the
+- `.dockerignore` excludes `extension/` — it never ends up in the
   server's Docker image regardless of what it contains or how it's built.
 - The Fly app only ever builds/deploys the existing `Dockerfile`, which
-  only `COPY`s what the server needs — adding `extension/` at the repo
-  root requires no changes to the deploy pipeline.
-- CI (`ci.yml`) currently only checks Python — when the extension lands,
-  add a separate job (or a separate workflow file) for its own
-  lint/build/test step, path-filtered to `extension/**` so unrelated
-  Python-only PRs don't wait on it.
+  only `COPY`s what the server needs — `extension/` at the repo root
+  required no changes to the deploy pipeline.
+- CI (`ci.yml`) still only checks Python; the extension has no build step
+  of its own to check (no bundler, plain JS, matching the rest of this
+  app's frontend) beyond the live Playwright test documented in
+  `extension/README.md`, which isn't the kind of thing that runs on every
+  PR (it hits the real deployed app with real admin credentials) — a
+  path-filtered `extension/**` CI job is still a reasonable future
+  addition if the extension grows real build/lint tooling.
+- **The one thing that *did* need a backend change**: the extension's
+  background service worker makes a credentialed cross-origin request
+  (`chrome-extension://<id>` → this app's own origin) carrying the same
+  session cookie a logged-in browser tab already has, so it can act on
+  your behalf without a separate login flow inside the extension. That
+  required narrowing `app/main.py`'s CORS config from a wildcard
+  (`allow_origins=["*"]`, `allow_credentials=False`) to an explicit
+  single-origin allowlist (`allow_origins=[EXTENSION_ORIGIN]`,
+  `allow_credentials=True`) — strictly *tighter* than before for every
+  caller that isn't the extension itself. Full writeup, including the
+  live-tested proof that `fetch(url, {credentials: 'include'})` actually
+  carries the cookie (no `declarativeNetRequest` cookie-injection fallback
+  was needed), is in `extension/README.md`'s "The CORS / cookie
+  mechanism" section — read that before touching `EXTENSION_ORIGIN` or
+  the extension's signing key, since the two have to stay in sync.

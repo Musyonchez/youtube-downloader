@@ -57,6 +57,25 @@ class SessionAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # CORS preflight (OPTIONS) requests can never carry the session
+        # cookie -- browsers deliberately omit credentials from a preflight
+        # regardless of `credentials: 'include'` on the real request that
+        # follows -- so every preflight would look "logged out" to the
+        # check below and get a 401 with no CORS headers on it, which
+        # breaks the browser's CORS handshake before the real, credentialed
+        # request ever gets sent (surfaced by docs/14's extension work: a
+        # 401 here masqueraded as "the cookie didn't carry" when the actual
+        # request carrying it never had a chance to fire). CORSMiddleware
+        # (added *before* this one in app/main.py, so it sits *inside* this
+        # middleware in the ASGI stack and would otherwise never even see
+        # the preflight -- see this module's docstring on middleware order)
+        # is the thing actually responsible for answering preflights; this
+        # middleware has no business gating them at all, so it steps aside
+        # and lets the request reach CORSMiddleware unauthenticated.
+        if scope["type"] == "http" and scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
         path = scope.get("path", "")
         if _is_exempt(path):
             await self.app(scope, receive, send)

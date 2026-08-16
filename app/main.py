@@ -87,23 +87,42 @@ IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONME
 # populate request.session before SessionAuthMiddleware reads it -- is
 # added last here, even though it's conceptually "first" in the request
 # flow. Verified empirically with a throwaway script during development.
-# allow_origins=["*"] dates back to this app's original LAN-tool design,
-# before docs/15's session auth existed -- left as-is post-auth (docs/16,
-# 16-22) because it's still safe *in this exact combination*:
-# allow_credentials=False means the browser will not attach cookies to a
-# cross-origin request here regardless of what allow_origins says, and the
-# session cookie itself is same_site="lax" (see SessionMiddleware below),
-# which independently blocks it from riding along on a cross-site request
-# in the first place. If either of those ever changes -- most importantly,
-# flipping allow_credentials to True -- allow_origins=["*"] stops being
-# safe and must be narrowed to a real origin allowlist first; the two
-# together (wildcard origins + credentialed requests) is a combination the
-# CORS spec itself forbids browsers from honoring, but don't rely on that
-# forbidding it here -- narrow allow_origins explicitly instead.
+#
+# allow_origins used to be ["*"] with allow_credentials=False -- that
+# combination dated back to this app's original LAN-tool design, before
+# docs/15's session auth existed, and stayed safe post-auth (docs/16, 16-22)
+# specifically *because* allow_credentials=False meant the browser would
+# never attach cookies to a cross-origin request here regardless of what
+# allow_origins said.
+#
+# That changed with the Chrome extension (docs/14): the extension's
+# background service worker needs to make a credentialed cross-origin
+# request (chrome-extension://<id> -> this app's own origin) carrying the
+# same session cookie a same-origin browser tab would send, so it can act
+# on the user's behalf without a separate login flow. allow_credentials=True
+# is required for that -- but allow_credentials=True combined with a
+# wildcard allow_origins is a combination the CORS spec itself forbids
+# browsers from honoring (and FastAPI/Starlette's CORSMiddleware won't
+# actually emit `Access-Control-Allow-Credentials: true` alongside a `*`
+# origin either), so the wildcard had to go regardless.
+#
+# allow_origins is now an explicit single-entry allowlist: exactly the
+# extension's own origin, derived from the RSA public key pinned in
+# extension/manifest.json's "key" field (see extension/README.md for how
+# that key maps to this exact chrome-extension://<id> origin, and why it
+# has to stay in sync with this constant). This is strictly *tighter* than
+# the previous wildcard for every caller that isn't the extension -- a
+# same-origin browser tab never goes through CORS at all (browsers only
+# apply CORS to cross-origin requests), and no other cross-origin caller is
+# allowed credentialed access. If EXTENSION_ORIGIN and the manifest's "key"
+# field ever drift apart (e.g. the dev keypair gets regenerated), the
+# extension's requests will fail CORS with no cookie ever sent -- update
+# both together.
+EXTENSION_ORIGIN = "chrome-extension://lfcekljajioeijjmcaandpbdlgddlmda"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[EXTENSION_ORIGIN],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
