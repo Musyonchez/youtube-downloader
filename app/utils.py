@@ -3,6 +3,19 @@ import os
 import re
 from pathlib import Path
 
+# True when this process is the Fly.io deployment (or any other explicitly-
+# flagged production target), false for a local/home run. Lives here rather
+# than in app/main.py because app/api/routes.py needs it too (to refuse
+# actual downloads on the hosted instance, see start_download below) and
+# main.py imports FROM routes.py -- routes.py importing back from main.py
+# would be circular. FLY_APP_NAME is set automatically by the Fly.io runtime
+# for every deployed app; ENVIRONMENT is an explicit escape hatch for any
+# other real deploy target. Was previously (docs/16, 16-7) inferred from "is
+# SECRET_KEY set", which wrongly conflated two unrelated things -- SECRET_KEY
+# can legitimately be set locally too (e.g. to test session persistence
+# across restarts).
+IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONMENT") == "production")
+
 # Directories a download_dir must never resolve into, even though the app
 # otherwise lets the user point it anywhere they like (it's a single-account
 # tool with genuinely arbitrary custom folders as a supported use case).

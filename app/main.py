@@ -19,6 +19,7 @@ from app.api.routes import router
 from app.api.routes import storage as auth_storage
 from app.passwords import hash_password, verify_password
 from app.session_auth import SessionAuthMiddleware
+from app.utils import IS_PRODUCTION
 from app.ws_manager import manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -70,16 +71,11 @@ if not SECRET_KEY:
         "secret in production (see docs/14-deployment.md)."
     )
 
-# Whether this process is a real deploy (Secure cookies required) or local/
-# LAN dev (plain HTTP, so a Secure cookie would never come back and login
-# would silently break). Previously this was inferred from "is SECRET_KEY
-# set", which conflates two unrelated things -- SECRET_KEY can legitimately
-# be set locally too (e.g. to test session persistence across restarts),
-# which would have wrongly forced Secure cookies over plain HTTP (docs/16,
-# 16-7). FLY_APP_NAME is set automatically by the Fly.io runtime for every
-# deployed app, so it's a reliable, purpose-built signal instead; ENVIRONMENT
-# is an explicit escape hatch for any other real deploy target.
-IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONMENT") == "production")
+# IS_PRODUCTION (imported from app.utils -- see its definition there for why
+# it lives in that module instead of here) drives the Secure-cookie decision
+# below: a real deploy needs Secure cookies, local/LAN dev needs plain HTTP
+# ones (a Secure cookie would never come back over plain HTTP and login
+# would silently break).
 
 # Middleware order matters and is easy to get backwards silently (see
 # app/session_auth.py's docstring): Starlette runs the *last*-added
