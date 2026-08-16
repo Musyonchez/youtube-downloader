@@ -55,6 +55,10 @@ class URLRequest(BaseModel):
     url: str
 
 
+class StatusesRequest(BaseModel):
+    video_ids: list[str] = Field(max_length=200)
+
+
 class VideoItem(BaseModel):
     video_id: str
     title: str
@@ -97,6 +101,15 @@ async def search_videos(request: SearchRequest) -> dict:
     enhanced_results = [{**video, 'status': statuses[video['video_id']]} for video in results]
 
     return {"results": enhanced_results}
+
+
+@router.post("/api/statuses")
+async def get_video_statuses(request: StatusesRequest) -> dict:
+    """Batch status lookup for arbitrary video IDs, no yt-dlp calls -- used by
+    the extension's on-page thumbnail badges across regular YouTube browsing,
+    where calling /api/video-info per thumbnail would be far too slow/heavy.
+    """
+    return {"statuses": storage.get_statuses(request.video_ids)}
 
 
 @router.post("/api/video-info")

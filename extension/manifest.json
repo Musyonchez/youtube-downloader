@@ -41,11 +41,10 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.youtube.com/watch*",
-        "https://www.youtube.com/playlist*"
+        "https://www.youtube.com/*"
       ],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "js": ["content.js", "thumbnail_badges.js"],
+      "css": ["content.css", "thumbnail_badges.css"],
       "run_at": "document_idle"
     }
   ]
