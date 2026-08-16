@@ -179,16 +179,8 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Toast Notifications
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast ${type}`;
-
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 3000);
-}
+// Toast Notifications -- showToast() now lives in cards.js (docs/16,
+// 16-19), shared with history.js instead of being defined here too.
 
 // Enter key for search
 function handleSearchEnter(event) {

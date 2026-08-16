@@ -1,14 +1,27 @@
 /* Shared navbar, mobile menu, theme toggle, and settings button.
- * Used by both templates/index.html and templates/app.html via
- * templates/partials/navbar.html -- see docs/06-ui-review.md for why this
+ * Used by every page that includes templates/partials/navbar.html (index,
+ * app, history, login, register) -- see docs/06-ui-review.md for why this
  * was extracted (the navbar used to be copy-pasted per page and drifted).
  *
- * Must be linked BEFORE the page's own stylesheet (landing.css/app.css),
- * since those still own the responsive breakpoint that hides .nav-links
- * and shows .mobile-menu-btn -- that breakpoint is intentionally different
- * per page (768px for the landing page, 968px for the app's split layout)
- * and later cascade order needs to win over these base rules.
- */
+ * The mobile nav-collapse breakpoint (hide .nav-links/.nav-actions, show
+ * .mobile-menu-btn) used to live only in landing.css (768px) and app.css
+ * (968px) -- login.html/register.html load nav.css but neither of those
+ * page-specific stylesheets, so the navbar never collapsed on narrow
+ * screens for them and .nav-links/.nav-actions just overflowed off-screen
+ * (docs/16, 16-3). Defined once here instead, at the app's 968px
+ * breakpoint (the wider of the two -- landing.css's page-specific rules
+ * below still narrow further for its own layout at 768px, this rule is
+ * just the shared show/hide baseline every page gets for free). */
+@media (max-width: 968px) {
+    .nav-links,
+    .nav-actions {
+        display: none;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+    }
+}
 
 .navbar {
     position: fixed;
@@ -81,7 +94,10 @@
 }
 
 .nav-links a.active {
-    color: var(--accent);
+    /* --accent-strong, not --accent -- see variables.css (docs/16, 16-18):
+       plain --accent as text here falls just under WCAG AA on the dark
+       theme's page background. */
+    color: var(--accent-strong);
     background: rgba(160, 106, 47, 0.1);
 }
 

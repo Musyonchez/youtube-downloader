@@ -20,7 +20,13 @@
    same time (the two constraints' luminance bands don't overlap). The button
    role was prioritized since it's the higher-traffic surface (call-to-action
    buttons/badges vs. two small text usages: .nav-links a.active, .stat
-   strong) -- this hex is the closest balance of both. */
+   strong) -- this hex is the closest balance of both.
+
+   docs/16 (16-18) closed the gap on those two small text usages instead of
+   reopening the button tradeoff above: --accent-strong is a lighter copper
+   (~6.5:1 on dark bg) used only where --accent would otherwise be text on
+   the page background; it stays equal to --accent in light theme, where
+   plain --accent already clears 4.5:1 as text. */
 
 :root {
     --bg-primary: #0a0a0f;
@@ -32,6 +38,17 @@
     /* Primary accent -- warm copper. */
     --accent: #a06a2f;
     --accent-hover: #8a5726;
+    /* --accent used as *text* on the page background (.nav-links a.active,
+       .stat strong) sits at ~4.32:1 against --bg-primary -- just under
+       WCAG AA's 4.5:1 (docs/16, 16-18; see the contrast tradeoff note
+       above for why --accent itself can't just move to fix this: a
+       lighter shade that clears 4.5:1 as text here drops white-on-accent
+       button contrast below 4.5:1 instead). --accent-strong is a lighter,
+       still-clearly-copper shade reserved for that text-on-page-background
+       role only; light theme's white card background already clears
+       4.5:1 with plain --accent, so --accent-strong stays equal to
+       --accent there. */
+    --accent-strong: #c9853f;
     /* Secondary accent -- deep teal. Also what --queued points at, so the
        "queued" status badge (docs/09 AUD-06) ties back into the app's own
        palette instead of an arbitrary unrelated blue. */
@@ -84,6 +101,7 @@
        they're theme-independent and also carry over unchanged. */
     --accent: #a06a2f;
     --accent-hover: #8a5726;
+    --accent-strong: #a06a2f;
     --accent-secondary: #0d6b5f;
     --queued: var(--accent-secondary);
     --gradient-1: linear-gradient(135deg, #a06a2f 0%, #d99a3d 100%);

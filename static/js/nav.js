@@ -38,7 +38,12 @@ document.addEventListener('DOMContentLoaded', initTheme);
 
 function toggleMobileMenu() {
     const menu = document.getElementById('mobileMenu');
-    menu.classList.toggle('active');
+    const isOpen = menu.classList.toggle('active');
+    // aria-expanded (docs/16, 16-17): the button never reflected open/
+    // closed state to assistive tech -- it was hardcoded false in the
+    // markup and never updated.
+    const btn = document.querySelector('.mobile-menu-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(isOpen));
 }
 
 // Close mobile menu when clicking outside it (or its toggle button).
@@ -51,5 +56,6 @@ document.addEventListener('click', (e) => {
         !mobileMenu.contains(e.target) &&
         !mobileMenuBtn.contains(e.target)) {
         mobileMenu.classList.remove('active');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
     }
 });

@@ -80,11 +80,23 @@ body {
 .auth-error {
     background: rgba(248, 81, 73, 0.12);
     border: 1px solid var(--warning);
+    /* --warning (#f85149) as text on this 12%-tinted background clears
+       4.5:1 against the *dark* card background, but drops to ~2.8:1 against
+       the *light* theme's near-white card background (docs/16, 16-5) --
+       the tint is too faint there to darken the effective background
+       enough. --warning-strong (already defined for white-text badges,
+       docs/12) is the reuse-not-reinvent fix for light mode specifically:
+       it's the mirror case, failing on dark (~2.5:1) but clearing 5.3:1 on
+       light. */
     color: var(--warning);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 14px;
     margin-bottom: 20px;
+}
+
+[data-theme="light"] .auth-error {
+    color: var(--warning-strong);
 }
 
 .auth-submit {
