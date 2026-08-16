@@ -71,8 +71,25 @@ def run_download_task(
             'success': bool(file_path),
             'file_path': file_path,
         }
+        # These are two separate SQLite writes with no transaction spanning
+        # them (docs/16, 16-12): if remove_from_library raises after
+        # add_to_downloaded already committed, the old code let the
+        # exception propagate straight out of this loop, aborting the rest
+        # of the batch and leaving this one video duplicated (recorded as
+        # both "downloaded" and still "queued"). Catching it here instead
+        # means one video's write failure can't take the rest of the batch
+        # down with it; the duplication itself is still possible (this
+        # isn't a real transaction), but it's now an isolated, logged
+        # anomaly rather than a silent batch-wide abort.
         storage.add_to_downloaded(result)
-        storage.remove_from_library(video_info['video_id'])
+        try:
+            storage.remove_from_library(video_info['video_id'])
+        except Exception:
+            logger.exception(
+                "Failed to remove %s from the library queue after recording its download "
+                "outcome -- it may now appear both downloaded and still queued.",
+                video_info.get('video_id'),
+            )
 
         if file_path:
             manager.broadcast_threadsafe(

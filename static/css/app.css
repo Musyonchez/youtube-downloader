@@ -119,7 +119,8 @@ body {
 }
 
 .stat strong {
-    color: var(--accent);
+    /* --accent-strong, not --accent -- see variables.css (docs/16, 16-18). */
+    color: var(--accent-strong);
     font-size: 18px;
 }
 
@@ -1003,15 +1004,9 @@ body {
 }
 
 @media (max-width: 968px) {
-    .nav-links,
-    .nav-actions {
-        display: none;
-    }
-
-    .mobile-menu-btn {
-        display: flex;
-    }
-    
+    /* .nav-links/.nav-actions/.mobile-menu-btn show/hide now lives in
+       nav.css, shared by every page (docs/16, 16-3) -- this block keeps
+       only the app-page-specific layout changes at the same breakpoint. */
     .app-container {
         flex-direction: column;
     }

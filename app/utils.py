@@ -4,11 +4,11 @@ import re
 from pathlib import Path
 
 # Directories a download_dir must never resolve into, even though the app
-# otherwise lets the user point it anywhere they like (it's a single-user
-# LAN tool with genuinely arbitrary custom folders as a supported use case).
-# This blocks the concrete abuse case -- an unauthenticated LAN client
-# redirecting downloads into an OS-sensitive location -- without limiting
-# legitimate custom paths.
+# otherwise lets the user point it anywhere they like (it's a single-account
+# tool with genuinely arbitrary custom folders as a supported use case).
+# This blocks the concrete abuse case -- the logged-in account (or, before
+# docs/15's session auth, any LAN client at all) redirecting downloads into
+# an OS-sensitive location -- without limiting legitimate custom paths.
 _WINDOWS_SENSITIVE_DIRS = (
     Path(os.environ.get('WINDIR', 'C:/Windows')),
     Path(os.environ.get('APPDATA', '')) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs' / 'Startup',

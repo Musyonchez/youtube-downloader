@@ -41,6 +41,21 @@ def test_status_reflects_empty_storage(tmp_path, monkeypatch):
     assert resp.json() == {"library_count": 0, "downloaded_count": 0}
 
 
+def test_add_to_library_rejects_url_with_disallowed_host(tmp_path, monkeypatch):
+    """docs/16, 16-10: /api/video-info and /api/playlist-info already run
+    their url through searcher.validate_url's host allowlist; this route
+    accepts an arbitrary `url` field directly (not necessarily one that
+    came from a search result) and hands it straight to yt-dlp at download
+    time, so it needs the same check."""
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp = client.post("/api/library/add", json={**VIDEO, "url": "https://evil.example.com/?x=youtube.com"})
+
+    assert resp.status_code == 400
+    library = client.get("/api/library").json()["library"]
+    assert library == []
+
+
 def test_add_to_library_then_appears_in_library_and_status(tmp_path, monkeypatch):
     isolated_storage(tmp_path, monkeypatch)
 
@@ -126,6 +141,31 @@ def test_get_downloaded_history(tmp_path, monkeypatch):
     downloaded = resp.json()["downloaded"]
     assert len(downloaded) == 2
     assert {d["success"] for d in downloaded} == {True, False}
+
+
+def test_get_downloaded_history_is_paginated_newest_first(tmp_path, monkeypatch):
+    """docs/16, 16-8: /api/downloaded bounds what it returns per call and
+    reports `total` separately, instead of always returning the entire
+    (ever-growing) history table."""
+    storage = isolated_storage(tmp_path, monkeypatch)
+    # Explicit, distinct downloaded_at timestamps (bypassing
+    # add_to_downloaded's "now") -- three inserts in the same test could
+    # otherwise land in the same second and make ordering ambiguous.
+    for i in range(3):
+        storage.db.add_downloaded_item(
+            {**VIDEO, "video_id": f"v{i}", "success": True, "file_path": "x.mp3"},
+            downloaded_at=f"2026-01-0{i + 1} 00:00:00",
+        )
+
+    resp = client.get("/api/downloaded?limit=2&offset=0")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 3
+    assert [d["video_id"] for d in body["downloaded"]] == ["v2", "v1"]  # newest first
+
+    next_page = client.get("/api/downloaded?limit=2&offset=2")
+    assert [d["video_id"] for d in next_page.json()["downloaded"]] == ["v0"]
 
 
 def test_get_and_update_config(tmp_path, monkeypatch):

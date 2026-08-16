@@ -7,6 +7,14 @@ primary_region = "iad"
 
 [env]
   PORT = "8000"
+  # Explicit coupling to the [[mounts]] destination below (docs/16, 16-21)
+  # -- app/storage/storage.py used to default to the bare relative path
+  # "data", which only landed on the persistent volume because this file's
+  # WORKDIR (Dockerfile) and mount destination happened to agree on
+  # /srv/data, with nothing actually enforcing that agreement. A future
+  # change to either could otherwise silently fall back to ephemeral
+  # storage with no error.
+  DATA_DIR = "/srv/data"
 
 [http_service]
   internal_port = 8000

@@ -1,0 +1,47 @@
+# Full dependency closure (direct + transitive) for requirements.txt,
+# pinned to exact versions (docs/16, 16-15). Without this,
+# `pip install -r requirements.txt`'s `>=` bounds mean every build resolves
+# to "whatever is newest today", with no reproducibility between a local
+# install, CI, and the Dockerfile build, and no review gate on a dependency
+# bump (yt-dlp especially updates often).
+#
+# Generated with `pip freeze` against a clean venv that had only
+# requirements.txt installed (not requirements-dev.txt, and not any other
+# project's packages -- a shared/reused venv's freeze would pull in
+# unrelated noise). Regenerate the same way after changing
+# requirements.txt:
+#
+#   python -m venv /tmp/lockenv && /tmp/lockenv/bin/pip install -r requirements.txt
+#   /tmp/lockenv/bin/pip freeze > requirements.lock
+#
+# and review the diff before committing -- that review is the actual point
+# of this file, not just the pinning.
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.14.2
+click==8.4.2
+colorama==0.4.6
+fastapi==0.141.1
+h11==0.16.0
+httptools==0.8.0
+idna==3.18
+itsdangerous==2.2.0
+Jinja2==3.1.6
+markdown-it-py==4.2.0
+MarkupSafe==3.0.3
+mdurl==0.1.2
+mutagen==1.48.1
+pydantic==2.13.4
+pydantic_core==2.46.4
+Pygments==2.20.0
+python-dotenv==1.2.2
+python-multipart==0.0.32
+PyYAML==6.0.3
+rich==15.0.0
+starlette==1.6.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.52.3
+watchfiles==1.2.0
+websockets==17.0.1
+yt-dlp==2026.7.4

@@ -204,17 +204,16 @@ async function downloadQueue() {
             renderQueue(); // Show initial downloading state
         }
 
-        // Poll for updates every second to show progress
+        // Poll for updates every second so the queue count/list stay
+        // current. Which item is "currently downloading" is no longer
+        // inferred here (docs/16, 16-23) -- websocket.js's progress
+        // handler sets currentlyDownloading directly from the server's
+        // own messages, which can't desync the way a queue-length-delta
+        // guess could if a video was added mid-batch.
         const interval = setInterval(async () => {
-            const previousLength = queue.length;
-            console.log('Polling - Queue length before:', previousLength);
-
             await loadStatus();
             await loadQueue(); // This calls renderQueue() internally
 
-            console.log('Polling - Queue length after:', queue.length);
-
-            // Update currently downloading based on queue state
             if (queue.length === 0) {
                 // Queue is empty - stop everything
                 console.log('Queue empty - stopping download');
@@ -233,14 +232,6 @@ async function downloadQueue() {
 
                 // Force re-render to clear any downloading states
                 renderQueue();
-            } else {
-                // Queue has items - first item is downloading
-                if (queue.length < previousLength) {
-                    // Item was removed, update to next one
-                    currentlyDownloading = queue[0].video_id;
-                    console.log('Now downloading:', queue[0].title);
-                    renderQueue(); // Re-render to show new downloading item
-                }
             }
         }, 1000); // Poll every second for smoother updates
     } catch (error) {

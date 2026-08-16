@@ -70,3 +70,28 @@ def test_start_download_rejects_concurrent_calls(tmp_path, monkeypatch):
 
     assert raised is not None
     assert raised.status_code == 409
+
+
+def test_start_download_releases_guard_if_scheduling_fails(tmp_path, monkeypatch):
+    """docs/16, 16-25: if anything between setting _download_in_progress =
+    True and successfully scheduling the background task raises, the guard
+    must still be released -- otherwise it's stuck True forever with no
+    background task ever running to release it via download_task's own
+    `finally`, wedging every future /api/download behind a 409."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+    monkeypatch.setattr(routes, 'storage', storage)
+    monkeypatch.setattr(routes, '_download_in_progress', False)
+
+    async def call():
+        with patch('asyncio.get_running_loop', side_effect=RuntimeError("boom")):
+            await routes.start_download(BackgroundTasks())
+
+    try:
+        asyncio.run(call())
+        raised = None
+    except RuntimeError as e:
+        raised = e
+
+    assert raised is not None
+    assert routes._download_in_progress is False

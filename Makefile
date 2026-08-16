@@ -29,10 +29,10 @@ help:
 	@echo "  make run          - Run the application"
 	@echo "  make clean        - Clean cache files"
 
-# Install production dependencies
+# Install production dependencies (pinned -- see requirements.lock's header, docs/16 16-15)
 install:
 	@if [ ! -d "$(VENV)" ]; then python -m venv $(VENV); fi
-	$(PIP) install -r requirements.txt
+	$(PIP) install -r requirements.lock
 
 # Install development dependencies
 install-dev: install

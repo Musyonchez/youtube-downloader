@@ -7,6 +7,7 @@ only, never a real download).
 YouTubeDownloader and the WebSocket manager are both mocked/faked; no
 network calls, no real files.
 """
+import sqlite3
 from unittest.mock import MagicMock
 
 from app.services.download_orchestrator import run_download_task
@@ -90,6 +91,36 @@ def test_empty_library_is_a_noop(tmp_path):
     run_download_task(storage, mock_manager, None, loop=MagicMock())
 
     mock_manager.broadcast_threadsafe.assert_not_called()
+
+
+def test_remove_from_library_failure_does_not_abort_the_batch(tmp_path, monkeypatch):
+    """docs/16, 16-12: add_to_downloaded() and remove_from_library() are two
+    separate SQLite writes with no transaction spanning them. If the second
+    write raises, the outcome must still have been recorded (add_to_downloaded
+    already ran), and -- the actual fix -- the exception must not propagate
+    out of run_download_task and abort the rest of the batch."""
+    storage = Storage(str(tmp_path))
+    storage.add_to_library(VIDEO)
+    storage.add_to_library({**VIDEO, 'video_id': 'other456'})
+
+    def boom(video_id):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(storage, "remove_from_library", boom)
+
+    fake_downloader = MagicMock()
+    fake_downloader.download_audio.return_value = '/tmp/song.mp3'
+    downloader_cls = MagicMock(return_value=fake_downloader)
+
+    # Must not raise -- the whole point of the fix.
+    run_download_task(storage, MagicMock(), None, loop=MagicMock(), downloader_cls=downloader_cls)
+
+    # The outcome was still recorded for both videos despite remove_from_library
+    # always failing (the "duplicated" state 16-12 describes -- still in the
+    # library *and* recorded as downloaded -- but not a crashed, half-run batch).
+    downloaded = storage.load_downloaded()
+    assert {d['video_id'] for d in downloaded} == {'abc123', 'other456'}
+    assert all(d['success'] for d in downloaded)
 
 
 def test_filters_by_video_ids(tmp_path):

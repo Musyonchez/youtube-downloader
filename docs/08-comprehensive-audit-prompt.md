@@ -3,8 +3,9 @@
 A reusable prompt for running a deep, multi-perspective audit of this repo with
 specialized subagents. Adapted from a generic template to fit this project's
 actual shape (see "Project context" below) so agents don't waste effort
-auditing things that don't apply here (multi-tenant auth, CSRF, horizontal
-scaling, etc.).
+auditing things that don't apply here (multi-tenancy, horizontal scaling,
+i18n, etc.) -- auth/session handling *does* apply now (docs/15, docs/16),
+see "Project context" below.
 
 Re-run this whenever the project has grown enough since the last audit
 ([01-audit.md](01-audit.md)) to justify another full pass.
@@ -13,10 +14,17 @@ Re-run this whenever the project has grown enough since the last audit
 
 ## Project context (read this before auditing)
 
-- **What it is:** a personal, single-user, LAN-only FastAPI web app for
-  searching YouTube and downloading audio as tagged MP3s. Not a multi-tenant
-  SaaS product — there is no login system, and that's an intentional,
-  previously-reviewed decision, not a gap to re-flag.
+- **What it is:** a personal, single-account FastAPI web app for searching
+  YouTube and downloading audio as tagged MP3s, deployed publicly on
+  Fly.io. Not a multi-tenant SaaS product, but **not unauthenticated
+  either** (docs/16, 16-11 corrected this section -- it previously said
+  "no login system... not a gap to re-flag", which was true when this doc
+  was written for a LAN-only deployment and stopped being true once the
+  app went public): real session-cookie login/register/logout (docs/15),
+  first-account-only registration enforced server-side, PBKDF2 password
+  hashing, and a pure-ASGI middleware gating every route except the
+  landing page and the auth pages themselves. Auth/session handling is
+  back in scope for future audits -- don't skip it.
 - **Stack:** FastAPI + Jinja2 templates, plain `<script>` tag JS (no bundler,
   no framework, global scope shared across `static/js/*.js` — deliberate),
   SQLite (stdlib `sqlite3`) for library/download state, JSON for config,
@@ -31,9 +39,10 @@ Re-run this whenever the project has grown enough since the last audit
   ([05](05-browser-verification.md)), an FFmpeg conversion data-integrity bug
   ([07](07-ffmpeg-conversion-bug.md)). Don't re-report these unless new
   evidence shows they regressed.
-- **Out of scope by design, do not re-flag:** authentication/authorization
-  (single trusted user, LAN only), multi-tenancy, horizontal scaling, CSRF
-  (no cross-site cookies/sessions), i18n.
+- **Out of scope by design, do not re-flag:** multi-tenancy (single
+  account by design, docs/15), horizontal scaling, i18n. CSRF risk is
+  reduced (not eliminated) by `same_site="lax"` session cookies -- still
+  worth a look on any audit that touches auth/session handling.
 
 ---
 
@@ -123,7 +132,7 @@ Use this severity scale:
 
 | Severity | Meaning |
 |---|---|
-| P0 — Critical | Breaks core functionality, causes data loss/corruption, or is a real security hole for the LAN-exposed surface |
+| P0 — Critical | Breaks core functionality, causes data loss/corruption, or is a real security hole for the publicly-deployed, session-auth-gated surface |
 | P1 — High | Real bug, real UX problem, or real architectural pain that should be fixed soon |
 | P2 — Medium | Worth doing, not urgent |
 | P3 — Low | Polish / cleanup |

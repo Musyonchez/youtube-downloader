@@ -897,15 +897,11 @@ body {
 }
 
 @media (max-width: 768px) {
-    .nav-links,
-    .nav-actions {
-        display: none;
-    }
-
-    .mobile-menu-btn {
-        display: flex;
-    }
-
+    /* .nav-links/.nav-actions/.mobile-menu-btn show/hide now lives in
+       nav.css, shared by every page (docs/16, 16-3) -- it already fires at
+       968px, wider than this 768px breakpoint, so the navbar has already
+       collapsed well before this block's landing-page-specific rules
+       apply. This block keeps only those. */
     .hero {
         padding: 100px 0 60px;
     }

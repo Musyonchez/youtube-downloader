@@ -104,3 +104,15 @@ function createCard(item, options) {
 
     return card;
 }
+
+// Toast notifications (docs/16, 16-19). Used to be defined identically in
+// both static/js/ui.js (app page) and static/js/history.js (history page)
+// -- cards.js is already loaded by both (see templates/app.html and
+// templates/history.html's script lists), so this is the one shared place
+// both duplicates collapsed into rather than either page owning it.
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+}

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """FastAPI web application for YouTube MP3 downloader."""
+import asyncio
 import logging
 import os
 import secrets
-import sqlite3
+import time
 from datetime import datetime
 from urllib.parse import urlsplit
 
@@ -15,9 +16,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.routes import router
+from app.api.routes import storage as auth_storage
 from app.passwords import hash_password, verify_password
 from app.session_auth import SessionAuthMiddleware
-from app.storage.storage import Storage
 from app.ws_manager import manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,11 +30,28 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Own Storage instance for the auth routes below (app/api/routes.py has its
-# own module-level `storage` for the library/download endpoints -- kept
-# separate rather than importing that one, since tests isolate routes.py's
-# storage independently and importing it here would couple the two).
-auth_storage = Storage()
+# Auth routes below reuse app/api/routes.py's module-level `storage`
+# instance (docs/16, 16-6) rather than constructing a second, independent
+# Storage/Database -- both used to point at the same on-disk `data/`
+# directory, so two live instances meant two separate sqlite3 connections
+# open against the same file for no benefit, plus config/library/downloaded
+# state read through one instance could lag what the other just wrote.
+# Tests still isolate this from routes.storage independently by
+# monkeypatching each module's own reference (see tests/conftest.py and
+# tests/test_api_routes.py) -- that's a test-only concern; in the running
+# app there is exactly one Storage instance.
+
+# Minimum wait between failed login attempts for a given username, doubling
+# up to a cap -- see login_submit (docs/16, 16-2). Single-account app, so a
+# per-username in-process counter is enough; no need for a new dependency.
+_LOGIN_COOLDOWN_BASE_SECONDS = 1.0
+_LOGIN_COOLDOWN_MAX_SECONDS = 30.0
+_failed_login_attempts: dict[str, tuple[int, float]] = {}
+# Serializes the read-compute-write span across _login_cooldown_remaining/
+# _record_login_failure/_clear_login_failures -- see
+# _login_cooldown_remaining's docstring for why a plain dict wasn't enough
+# on its own.
+_login_attempts_lock = asyncio.Lock()
 
 # SECRET_KEY signs the session cookie (itsdangerous, via Starlette's
 # SessionMiddleware) -- treat it like any other credential. Read from the
@@ -52,12 +70,36 @@ if not SECRET_KEY:
         "secret in production (see docs/14-deployment.md)."
     )
 
+# Whether this process is a real deploy (Secure cookies required) or local/
+# LAN dev (plain HTTP, so a Secure cookie would never come back and login
+# would silently break). Previously this was inferred from "is SECRET_KEY
+# set", which conflates two unrelated things -- SECRET_KEY can legitimately
+# be set locally too (e.g. to test session persistence across restarts),
+# which would have wrongly forced Secure cookies over plain HTTP (docs/16,
+# 16-7). FLY_APP_NAME is set automatically by the Fly.io runtime for every
+# deployed app, so it's a reliable, purpose-built signal instead; ENVIRONMENT
+# is an explicit escape hatch for any other real deploy target.
+IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONMENT") == "production")
+
 # Middleware order matters and is easy to get backwards silently (see
 # app/session_auth.py's docstring): Starlette runs the *last*-added
 # middleware *first* (outermost), so SessionMiddleware -- which must
 # populate request.session before SessionAuthMiddleware reads it -- is
 # added last here, even though it's conceptually "first" in the request
 # flow. Verified empirically with a throwaway script during development.
+# allow_origins=["*"] dates back to this app's original LAN-tool design,
+# before docs/15's session auth existed -- left as-is post-auth (docs/16,
+# 16-22) because it's still safe *in this exact combination*:
+# allow_credentials=False means the browser will not attach cookies to a
+# cross-origin request here regardless of what allow_origins says, and the
+# session cookie itself is same_site="lax" (see SessionMiddleware below),
+# which independently blocks it from riding along on a cross-site request
+# in the first place. If either of those ever changes -- most importantly,
+# flipping allow_credentials to True -- allow_origins=["*"] stops being
+# safe and must be narrowed to a real origin allowlist first; the two
+# together (wildcard origins + credentialed requests) is a combination the
+# CORS spec itself forbids browsers from honoring, but don't rely on that
+# forbidding it here -- narrow allow_origins explicitly instead.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -70,10 +112,10 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     same_site="lax",
-    # Secure cookie only when SECRET_KEY is explicitly set (i.e. a real
-    # deploy, not local dev) -- local/LAN use is plain HTTP, and a Secure
-    # cookie would never be sent back over it, silently breaking login.
-    https_only=bool(os.environ.get("SECRET_KEY")),
+    # Secure cookie only in a real deploy (see IS_PRODUCTION above) --
+    # local/LAN use is plain HTTP, and a Secure cookie would never be sent
+    # back over it, silently breaking login.
+    https_only=IS_PRODUCTION,
 )
 
 # Mount static files
@@ -90,10 +132,31 @@ templates.env.globals["current_year"] = lambda: datetime.now().year
 # {{ current_user(request) }} without editing every route handler's context
 # dict -- `request` is already in context on every TemplateResponse call.
 templates.env.globals["current_user"] = lambda request: request.session.get("user")
-# Drives the navbar's Register link (docs/15): only shown while no account
-# exists yet. Re-checks storage on every render rather than caching, since
-# it must flip to hidden the instant the first account is created.
-templates.env.globals["registration_open"] = lambda: auth_storage.count_users() == 0
+# Registration can only ever flip open -> closed, exactly once, for the
+# lifetime of this process (docs/15's first-account-only design) -- once
+# closed it can never reopen. _registration_closed_cache (docs/16, 16-16)
+# takes advantage of that one-way flip: registration_open() is a Jinja
+# global called on *every* template render (it's in the navbar, included
+# on every page), so re-querying SQLite there forever -- long after the
+# one account was created -- is pure waste. Once a render observes
+# count_users() > 0, the cache flips True and every render after that
+# skips the query entirely; before that first flip, it still checks
+# storage on every render (so a brand-new account is picked up on the
+# very next render, same as before this change).
+_registration_closed_cache = False
+
+
+def _registration_open() -> bool:
+    global _registration_closed_cache
+    if _registration_closed_cache:
+        return False
+    if auth_storage.count_users() > 0:
+        _registration_closed_cache = True
+        return False
+    return True
+
+
+templates.env.globals["registration_open"] = _registration_open
 
 
 def _safe_next_path(next_path: str | None) -> str:
@@ -175,21 +238,101 @@ async def login_form(request: Request, next: str | None = None):
     return templates.TemplateResponse(request, "login.html", {"next": next or ""})
 
 
+async def _login_cooldown_remaining(username: str) -> float:
+    """Seconds a client must still wait before this username can attempt
+    another login -- 0 if it's free to try now. Doubles per consecutive
+    failure (1s, 2s, 4s, ... capped at _LOGIN_COOLDOWN_MAX_SECONDS), reset
+    on any successful login. In-process only (docs/16, 16-2): good enough
+    for this app's single-account scope (a distributed store would only
+    matter across multiple app instances, which this deploy doesn't have),
+    and avoids pulling in a new dependency like slowapi for one counter.
+
+    Async and lock-guarded (docs/16, follow-up on 16-2's original review):
+    a single dict op is atomic in CPython, but the read-then-write sequence
+    across this function and _record_login_failure/_clear_login_failures
+    isn't -- two concurrent requests for the same username could each read
+    the same `failures` count before either writes back the incremented
+    one, losing an increment and making the cooldown non-deterministic
+    under load. _login_attempts_lock serializes the whole read-compute-
+    write span in each of the three functions.
+    """
+    async with _login_attempts_lock:
+        entry = _failed_login_attempts.get(username)
+        if entry is None:
+            return 0.0
+        failures, last_attempt_at = entry
+    wait = min(_LOGIN_COOLDOWN_BASE_SECONDS * (2 ** (failures - 1)), _LOGIN_COOLDOWN_MAX_SECONDS)
+    remaining = wait - (time.monotonic() - last_attempt_at)
+    return float(max(0.0, remaining))
+
+
+async def _record_login_failure(username: str) -> None:
+    async with _login_attempts_lock:
+        failures, _ = _failed_login_attempts.get(username, (0, 0.0))
+        _failed_login_attempts[username] = (failures + 1, time.monotonic())
+
+
+async def _clear_login_failures(username: str) -> None:
+    async with _login_attempts_lock:
+        _failed_login_attempts.pop(username, None)
+
+
+# A username-enumeration timing side-channel (docs/16, 16-24):
+# verify_password only ran at all when auth_storage.get_user() found a row,
+# so "unknown username" returned faster than "known username, wrong
+# password" (PBKDF2 at 260k iterations is deliberately slow, see
+# app/passwords.py). Low value here since exactly one account can ever
+# exist (docs/15) -- there's only ever one username to enumerate, and
+# whoever registered it already knows it -- but cheap to close anyway:
+# run a real PBKDF2 verification against this fixed dummy hash on the
+# "unknown username" path too, so both paths cost the same regardless of
+# which branch is taken. The password itself is irrelevant -- this hash
+# will never match anything a real user submits.
+_DUMMY_PASSWORD_HASH = hash_password("this-hash-only-exists-to-equalize-login-timing")
+
+
 @app.post("/login")
 async def login_submit(
     request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("")
 ):
     """Verify credentials and start a session. Wrong username/password
     re-renders the form with an error and a 401 status -- never a silent
-    200 with no session set."""
+    200 with no session set. Also enforced: a short, doubling cooldown per
+    username after each failed attempt (docs/16, 16-2), so a brute-force
+    script can't hammer the single account's password at network speed."""
+    cooldown = await _login_cooldown_remaining(username)
+    if cooldown > 0:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"next": next, "error": "Too many attempts. Please wait a moment and try again."},
+            status_code=429,
+        )
+
+    # verify_password runs PBKDF2 at 260k iterations (app/passwords.py) --
+    # deliberately slow, and deliberately synchronous (stdlib hashlib has
+    # no async variant). Run via asyncio.to_thread (docs/16, 16-25) rather
+    # than calling it directly, so that ~50-150ms of CPU-bound hashing
+    # doesn't block this process's single event loop -- and everything else
+    # it's serving (WebSocket progress broadcasts, other requests) -- for
+    # the duration of every login attempt.
     user = auth_storage.get_user(username)
-    if user is None or not verify_password(password, user["password_hash"]):
+    if user is None:
+        await asyncio.to_thread(verify_password, password, _DUMMY_PASSWORD_HASH)  # see its docstring
+        await _record_login_failure(username)
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"next": next, "error": "Incorrect username or password."},
+            status_code=401,
+        )
+    if not await asyncio.to_thread(verify_password, password, user["password_hash"]):
+        await _record_login_failure(username)
         return templates.TemplateResponse(
             request, "login.html",
             {"next": next, "error": "Incorrect username or password."},
             status_code=401,
         )
 
+    await _clear_login_failures(username)
     request.session["user"] = username
     return RedirectResponse(_safe_next_path(next), status_code=303)
 
@@ -202,8 +345,11 @@ async def register_form(request: Request):
     in register_submit below."""
     if request.session.get("user"):
         return RedirectResponse("/app/name", status_code=303)
-    closed = auth_storage.count_users() > 0
+    closed = not _registration_open()
     return templates.TemplateResponse(request, "register.html", {"closed": closed})
+
+
+_MIN_PASSWORD_LENGTH = 8
 
 
 @app.post("/register")
@@ -212,10 +358,14 @@ async def register_submit(request: Request, username: str = Form(...), password:
     security boundary (docs/15) -- re-checks count_users() == 0 itself
     rather than trusting that the GET page's check was honored, since this
     route can be hit directly (curl/devtools), bypassing the UI entirely.
-    Also guards the race where two requests both pass the count check
-    before either commits: create_user's PRIMARY KEY constraint raises
-    IntegrityError for the loser, which is treated the same as "registration
-    already closed".
+
+    The count-check and the insert happen atomically in
+    auth_storage.create_user_if_first (docs/16, 16-1) -- a plain
+    "count_users() == 0, then create_user()" here would be two separate
+    storage calls with a window between them where two concurrent requests
+    for two *different* usernames could each see zero users and both go on
+    to create an account; the username-collision case (same name twice) was
+    the only thing the old IntegrityError backstop actually caught.
     """
     username = username.strip()
     if not username or not password:
@@ -223,12 +373,19 @@ async def register_submit(request: Request, username: str = Form(...), password:
             request, "register.html", {"error": "Username and password are required."}, status_code=400,
         )
 
-    if auth_storage.count_users() > 0:
-        return HTMLResponse("<h1>Registration is closed.</h1>", status_code=403)
+    if len(password) < _MIN_PASSWORD_LENGTH:
+        return templates.TemplateResponse(
+            request, "register.html",
+            {"error": f"Password must be at least {_MIN_PASSWORD_LENGTH} characters."},
+            status_code=400,
+        )
 
-    try:
-        auth_storage.create_user(username, hash_password(password))
-    except sqlite3.IntegrityError:
+    # hash_password (app/passwords.py) is the same synchronous, CPU-bound
+    # PBKDF2 call as verify_password above -- run off the event loop for
+    # the same reason (docs/16, 16-25).
+    password_hash = await asyncio.to_thread(hash_password, password)
+    created = auth_storage.create_user_if_first(username, password_hash)
+    if not created:
         return HTMLResponse("<h1>Registration is closed.</h1>", status_code=403)
 
     request.session["user"] = username

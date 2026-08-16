@@ -17,8 +17,21 @@ class Storage:
 
     _lock = threading.Lock()
 
-    def __init__(self, base_dir: str = "data"):
-        self.base_dir = Path(base_dir)
+    def __init__(self, base_dir: str | None = None):
+        # `base_dir` is only ever left at its default in production
+        # (app/api/routes.py's module-level `storage = Storage()`) --
+        # every test passes an explicit tmp_path. That default used to be
+        # the bare relative string "data", coupled to persistent storage
+        # only *implicitly*: it happens to land on the Fly volume mount
+        # because the Dockerfile's WORKDIR and fly.toml's mount destination
+        # both happen to agree on /srv/data, with nothing actually
+        # enforcing that agreement (docs/16, 16-21) -- a future change to
+        # either one could silently make this resolve to the container's
+        # ephemeral filesystem instead, losing the account/library/history
+        # on every restart with no error. DATA_DIR makes the coupling
+        # explicit: unset, it still defaults to "data" (unchanged local-dev
+        # behavior); fly.toml now sets it to the mount path directly.
+        self.base_dir = Path(base_dir if base_dir is not None else os.environ.get("DATA_DIR", "data"))
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.config_file = self.base_dir / "config.json"
         self.db = Database(str(self.base_dir / "downloads.db"))
@@ -93,9 +106,11 @@ class Storage:
         return self.db.count_library()
 
     # Downloaded operations
-    def load_downloaded(self) -> list[dict]:
-        """Load downloaded history."""
-        return self.db.get_downloaded()
+    def load_downloaded(self, limit: int | None = None, offset: int = 0, descending: bool = False) -> list[dict]:
+        """Load downloaded history. `limit`/`offset` page through it
+        instead of loading the whole (ever-growing) table -- see
+        db.Database.get_downloaded's docstring (docs/16, 16-8)."""
+        return self.db.get_downloaded(limit=limit, offset=offset, descending=descending)
 
     def count_downloaded(self) -> int:
         """Number of items in download history."""
@@ -134,6 +149,15 @@ class Storage:
         """Create a new user account. Raises sqlite3.IntegrityError if the
         username already exists -- see db.create_user's docstring."""
         self.db.create_user(username, password_hash, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    def create_user_if_first(self, username: str, password_hash: str) -> bool:
+        """Atomically create `username` as the sole account, only if no
+        account exists yet. Returns False (does nothing) if one already
+        does -- this is the actual registration-race fix (docs/16, 16-1),
+        see db.create_user_if_first's docstring."""
+        return self.db.create_user_if_first(
+            username, password_hash, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
     def get_user(self, username: str) -> dict | None:
         """Look up a user by username, or None if it doesn't exist."""
