@@ -56,7 +56,7 @@ site* -- search results still use the older `ytd-video-renderer` /
 `ytd-thumbnail` structure, while channel grids and the watch-page sidebar
 have moved to a newer `yt-lockup-view-model` / `yt-thumbnail-view-model`
 structure. `thumbnail_badges.js` targets both, plus the renderer tag names
-this feature's task named (`ytd-compact-video-renderer`,
+this feature is tasked with (`ytd-compact-video-renderer`,
 `ytd-grid-video-renderer`, `ytd-playlist-video-renderer`) even though live
 inspection didn't turn up examples of those on the pages checked. This
 worked as of the test run documented below, but there's no guarantee

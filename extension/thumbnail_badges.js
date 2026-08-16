@@ -207,7 +207,27 @@ function registerThumbnail(hostEl, videoId, meta) {
   }
 }
 
+// YouTube's infinite scroll / SPA navigation constantly adds *and removes*
+// thumbnail elements from the DOM (not just adds) -- without this,
+// videoBadgeMap would keep growing forever over a long browsing session,
+// holding onto detached hostEl/badgeEl references for thumbnails that were
+// scrolled away and torn down long ago. Called opportunistically at the
+// start of every scan() rather than wired into the MutationObserver's own
+// removal records -- cheap (a handful of .isConnected checks per scan, not
+// per removed node) and doesn't require tracking which specific nodes were
+// removed.
+function cleanupVideoBadgeMap() {
+  for (const [videoId, entries] of videoBadgeMap) {
+    for (const entry of entries) {
+      if (!entry.hostEl.isConnected) entries.delete(entry);
+    }
+    if (entries.size === 0) videoBadgeMap.delete(videoId);
+  }
+}
+
 function scan() {
+  cleanupVideoBadgeMap();
+
   const containers = document.querySelectorAll(CONTAINER_SELECTOR);
 
   for (const container of containers) {

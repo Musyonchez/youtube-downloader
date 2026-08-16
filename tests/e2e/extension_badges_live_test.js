@@ -103,9 +103,12 @@ async function cleanupViaApi(page, videoId) {
     if (totalBadges === 0) {
       throw new Error('Expected at least one thumbnail badge to render on the search results page');
     }
-    if (newBadges === 0) {
-      throw new Error('Expected at least one "new" badge among ambient search results');
-    }
+    // Deliberately not asserting newBadges > 0 here: on an account where
+    // every ambient result happens to already be queued/downloaded, zero
+    // "new" badges is correct behavior, not a bug. The click/toast/undo
+    // assertions below already target a specific real "new" badge element
+    // (and fail with a clear locator timeout if none exists), which is a
+    // more meaningful check than a raw count.
 
     // Confirm no Shorts thumbnails got badged.
     const shortsHrefBadged = await page.evaluate(() => {
