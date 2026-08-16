@@ -47,6 +47,11 @@ app = FastAPI(
 _LOGIN_COOLDOWN_BASE_SECONDS = 1.0
 _LOGIN_COOLDOWN_MAX_SECONDS = 30.0
 _failed_login_attempts: dict[str, tuple[int, float]] = {}
+# Serializes the read-compute-write span across _login_cooldown_remaining/
+# _record_login_failure/_clear_login_failures -- see
+# _login_cooldown_remaining's docstring for why a plain dict wasn't enough
+# on its own.
+_login_attempts_lock = asyncio.Lock()
 
 # SECRET_KEY signs the session cookie (itsdangerous, via Starlette's
 # SessionMiddleware) -- treat it like any other credential. Read from the
@@ -233,30 +238,43 @@ async def login_form(request: Request, next: str | None = None):
     return templates.TemplateResponse(request, "login.html", {"next": next or ""})
 
 
-def _login_cooldown_remaining(username: str) -> float:
+async def _login_cooldown_remaining(username: str) -> float:
     """Seconds a client must still wait before this username can attempt
     another login -- 0 if it's free to try now. Doubles per consecutive
     failure (1s, 2s, 4s, ... capped at _LOGIN_COOLDOWN_MAX_SECONDS), reset
     on any successful login. In-process only (docs/16, 16-2): good enough
     for this app's single-account scope (a distributed store would only
     matter across multiple app instances, which this deploy doesn't have),
-    and avoids pulling in a new dependency like slowapi for one counter."""
-    entry = _failed_login_attempts.get(username)
-    if entry is None:
-        return 0.0
-    failures, last_attempt_at = entry
+    and avoids pulling in a new dependency like slowapi for one counter.
+
+    Async and lock-guarded (docs/16, follow-up on 16-2's original review):
+    a single dict op is atomic in CPython, but the read-then-write sequence
+    across this function and _record_login_failure/_clear_login_failures
+    isn't -- two concurrent requests for the same username could each read
+    the same `failures` count before either writes back the incremented
+    one, losing an increment and making the cooldown non-deterministic
+    under load. _login_attempts_lock serializes the whole read-compute-
+    write span in each of the three functions.
+    """
+    async with _login_attempts_lock:
+        entry = _failed_login_attempts.get(username)
+        if entry is None:
+            return 0.0
+        failures, last_attempt_at = entry
     wait = min(_LOGIN_COOLDOWN_BASE_SECONDS * (2 ** (failures - 1)), _LOGIN_COOLDOWN_MAX_SECONDS)
     remaining = wait - (time.monotonic() - last_attempt_at)
     return float(max(0.0, remaining))
 
 
-def _record_login_failure(username: str) -> None:
-    failures, _ = _failed_login_attempts.get(username, (0, 0.0))
-    _failed_login_attempts[username] = (failures + 1, time.monotonic())
+async def _record_login_failure(username: str) -> None:
+    async with _login_attempts_lock:
+        failures, _ = _failed_login_attempts.get(username, (0, 0.0))
+        _failed_login_attempts[username] = (failures + 1, time.monotonic())
 
 
-def _clear_login_failures(username: str) -> None:
-    _failed_login_attempts.pop(username, None)
+async def _clear_login_failures(username: str) -> None:
+    async with _login_attempts_lock:
+        _failed_login_attempts.pop(username, None)
 
 
 # A username-enumeration timing side-channel (docs/16, 16-24):
@@ -282,7 +300,7 @@ async def login_submit(
     200 with no session set. Also enforced: a short, doubling cooldown per
     username after each failed attempt (docs/16, 16-2), so a brute-force
     script can't hammer the single account's password at network speed."""
-    cooldown = _login_cooldown_remaining(username)
+    cooldown = await _login_cooldown_remaining(username)
     if cooldown > 0:
         return templates.TemplateResponse(
             request, "login.html",
@@ -300,21 +318,21 @@ async def login_submit(
     user = auth_storage.get_user(username)
     if user is None:
         await asyncio.to_thread(verify_password, password, _DUMMY_PASSWORD_HASH)  # see its docstring
-        _record_login_failure(username)
+        await _record_login_failure(username)
         return templates.TemplateResponse(
             request, "login.html",
             {"next": next, "error": "Incorrect username or password."},
             status_code=401,
         )
     if not await asyncio.to_thread(verify_password, password, user["password_hash"]):
-        _record_login_failure(username)
+        await _record_login_failure(username)
         return templates.TemplateResponse(
             request, "login.html",
             {"next": next, "error": "Incorrect username or password."},
             status_code=401,
         )
 
-    _clear_login_failures(username)
+    await _clear_login_failures(username)
     request.session["user"] = username
     return RedirectResponse(_safe_next_path(next), status_code=303)
 

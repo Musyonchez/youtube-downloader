@@ -271,6 +271,47 @@ def test_login_rate_limit_is_per_username(tmp_path, monkeypatch):
     assert resp.status_code == 303
 
 
+def test_login_attempts_lock_serializes_concurrent_access(monkeypatch):
+    """Follow-up fix on 16-2 (flagged in PR review): a single dict op is
+    atomic in CPython, but the read-then-write sequence across
+    _login_cooldown_remaining/_record_login_failure/_clear_login_failures
+    wasn't -- concurrent requests for the same username could each read
+    the same `failures` count before either wrote back the incremented
+    one, losing an increment. _login_attempts_lock (an asyncio.Lock held
+    for the whole read-compute-write span) fixes that.
+
+    A plain asyncio.gather() over calls with no internal `await` wouldn't
+    actually prove this -- asyncio only switches coroutines at an `await`
+    point, so those would already run atomically end-to-end without any
+    lock, on a single-threaded event loop. This instead makes the lock
+    contention observable directly: one coroutine holds the lock across an
+    await, a second tries to record a failure while it's held, and the
+    execution order proves the second one genuinely blocked until the
+    first released it, rather than interleaving."""
+    import asyncio
+
+    monkeypatch.setattr(main, "_failed_login_attempts", {})
+    order = []
+
+    async def holds_the_lock():
+        async with main._login_attempts_lock:
+            order.append("holder-acquired")
+            await asyncio.sleep(0.05)
+            order.append("holder-released")
+
+    async def tries_to_record():
+        await asyncio.sleep(0.01)  # let holds_the_lock() acquire first
+        await main._record_login_failure("alice")
+        order.append("racer-recorded")
+
+    async def run():
+        await asyncio.gather(holds_the_lock(), tries_to_record())
+
+    asyncio.run(run())
+
+    assert order == ["holder-acquired", "holder-released", "racer-recorded"]
+
+
 def test_registration_open_caches_once_closed(tmp_path, monkeypatch):
     """docs/16, 16-16: once registration_open() observes an account, it
     must never query storage again -- registration can only ever go from
