@@ -208,3 +208,25 @@ def test_add_multiple_endpoint_was_removed(tmp_path, monkeypatch):
     isolated_storage(tmp_path, monkeypatch)
     resp = client.post("/api/library/add-multiple", json=[VIDEO])
     assert resp.status_code in (404, 405)
+
+
+def test_get_statuses_batch_lookup(tmp_path, monkeypatch):
+    """Used by the extension's on-page thumbnail badges (extension/content.js)
+    to resolve new/queued/downloaded state for many video IDs in one call
+    instead of one /api/video-info per thumbnail."""
+    isolated_storage(tmp_path, monkeypatch)
+
+    client.post("/api/library/add", json=VIDEO)
+
+    resp = client.post("/api/statuses", json={"video_ids": ["abc123", "unknown999"]})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"statuses": {"abc123": "queued", "unknown999": "new"}}
+
+
+def test_get_statuses_rejects_over_200_ids(tmp_path, monkeypatch):
+    isolated_storage(tmp_path, monkeypatch)
+
+    resp = client.post("/api/statuses", json={"video_ids": [f"id{i}" for i in range(201)]})
+
+    assert resp.status_code == 422

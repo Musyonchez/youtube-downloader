@@ -14,14 +14,70 @@ session cookie) -- there is no separate login inside the extension. If
 you're not logged in, the button (and the popup) tell you so and offer a
 one-click link to `/login`.
 
+## Thumbnail badges
+
+On top of the floating button (which only appears on `/watch` and
+`/playlist` pages), a small status badge is drawn in the top-left corner of
+**every video thumbnail on any youtube.com page** -- home feed, search
+results, channel pages, sidebars/related videos, subscriptions, playlist
+listings. Three states:
+
+- **New** (copper `+`) -- clickable. One click queues the video immediately,
+  right from the thumbnail, without opening it.
+- **Queued** (teal hourglass) -- already in the library queue, not yet
+  downloaded. Indicator only, not clickable -- clicks pass through to
+  YouTube's own thumbnail link so the page still navigates normally.
+- **Downloaded** (green check) -- already in download history. Also
+  indicator-only.
+
+This is the whole point of the badges: not having to open a video first
+just to queue it. YouTube Shorts thumbnails are explicitly skipped (out of
+scope, different DOM shape).
+
+Clicking a "new" badge shows a toast in the bottom-left corner with the
+video's title and an **Undo** button (auto-dismisses after 10 seconds;
+stacks up to 5 toasts, oldest dropped first if a 6th arrives). Undo removes
+the video from the queue and reverts the badge to "new" in place.
+
+Badge status is resolved via a batched `POST /api/statuses` call (added
+alongside this feature -- see `app/api/routes.py`) rather than one
+`/api/video-info` call per thumbnail, which would be far too slow given a
+page can have hundreds of thumbnails; that endpoint is a pure-DB lookup,
+never touches yt-dlp. Newly-seen thumbnails are collected via a debounced
+`MutationObserver` (YouTube is a SPA with infinite scroll/lazy loading) and
+resolved in one batch per ~350ms window; resolved statuses are cached
+in-memory per page load and only ever corrected by this extension's own
+actions (add / undo), never re-polled on a timer.
+
+**A note on DOM fragility**: YouTube's frontend is a large, frequently
+redeployed SPA, and live inspection while building this feature (2026-08)
+found it mid-migration between two renderer generations *on the same
+site* -- search results still use the older `ytd-video-renderer` /
+`ytd-thumbnail` structure, while channel grids and the watch-page sidebar
+have moved to a newer `yt-lockup-view-model` / `yt-thumbnail-view-model`
+structure. `thumbnail_badges.js` targets both, plus the renderer tag names
+this feature's task named (`ytd-compact-video-renderer`,
+`ytd-grid-video-renderer`, `ytd-playlist-video-renderer`) even though live
+inspection didn't turn up examples of those on the pages checked. This
+worked as of the test run documented below, but there's no guarantee
+YouTube's markup stays put -- if badges stop appearing on some layout in
+the future, the DOM structure most likely shifted again and
+`thumbnail_badges.js`'s selectors need a refresh, the same maintenance
+reality `content.js`'s own comment already calls out for the floating
+button.
+
 ## What's in here
 
 - `manifest.json` -- MV3 manifest. Pins a stable extension ID via the
   `"key"` field (see "Stable extension ID" below).
 - `background.js` -- service worker; the only place that talks to the
   API (see its top comment for why).
-- `content.js` / `content.css` -- injected on `youtube.com/watch*` and
-  `youtube.com/playlist*`; renders the floating button.
+- `content.js` / `content.css` -- injected on every `youtube.com/*` page;
+  renders the floating button (scoped internally to `/watch` and
+  `/playlist` only).
+- `thumbnail_badges.js` / `thumbnail_badges.css` -- injected on every
+  `youtube.com/*` page; renders the thumbnail status badges and toast
+  notifications described above.
 - `popup/` -- the small popup shown when you click the toolbar icon
   (login status + a link to the web app).
 - `common.js` -- shared constants (API base URL).
@@ -187,3 +243,60 @@ inject a `Cookie:` header onto the outgoing request (`fetch()` cannot set
 
     All live extension tests completed successfully.
     ```
+
+- **Thumbnail badges, live**: `tests/e2e/extension_badges_live_test.js`
+  (same `LIVE_ADMIN_USERNAME`/`LIVE_ADMIN_PASSWORD` env-var pattern, same
+  `launchPersistentContext` approach). It navigates to a YouTube search
+  results page and drives the badge-click -> toast -> Undo flow the same
+  way a real user would.
+
+  **Important caveat on what could actually be verified against
+  production at the time this was built**: `/api/statuses` is a new route
+  added by this PR -- it only exists once this PR is merged and CD
+  deploys it (deploys happen only via CD from master, never manually).
+  Run against the *current* production deployment, before this PR merges,
+  every `/api/statuses` call correctly gets a `404` (route doesn't exist
+  yet), so no badges render at all -- confirmed directly:
+  `curl -X POST https://yt-mp3-downloader.fly.dev/api/statuses ...` with a
+  valid session returns 404 today. This is expected, not a bug.
+
+  To actually verify the full badge/status/toast/undo flow end-to-end
+  before this PR could be merged, the same code was run against a
+  throwaway **local** instance of this app (`uvicorn app.main:app`, an
+  isolated `DATA_DIR`, a disposable test account) with a temporary copy of
+  the extension pointed at `http://127.0.0.1:8765` instead of the deployed
+  URL (`host_permissions`/`common.js` edited only in that throwaway copy,
+  never in the committed `extension/`) -- driving real, live
+  `youtube.com` search-results pages exactly as `extension_badges_live_test.js`
+  does, just against a local backend. That run:
+  - Seeded one real video ID (found live on a `youtube.com/results?...`
+    search page) as queued via `POST /api/library/add`, and another as
+    downloaded via `Storage.add_to_downloaded`, alongside untouched
+    "new" video IDs from the same real search results page.
+  - Confirmed all three badge states (`new`/`queued`/`downloaded`)
+    rendered correctly, on the correct real thumbnails, out of 20 total
+    badges rendered on that page.
+  - Clicked a "new" badge -> badge flipped to "queued" in place, a toast
+    appeared with the correct video title and a visible Undo button,
+    and `GET /api/library` confirmed the video was genuinely queued
+    server-side (not just an optimistic UI state).
+  - Clicked Undo -> toast dismissed immediately, badge reverted to "new"
+    in place, and `GET /api/library` confirmed the video was gone
+    server-side.
+  - No unexpected console/page errors (the local backend's own request
+    log showed every `/api/*` call from the extension returning 200,
+    confirming a stray browser-console 401 seen during the run came from
+    YouTube's own page, not this extension).
+
+  `tests/e2e/extension_live_test.js` (the pre-existing floating-button
+  test) was also re-run against production after broadening
+  `manifest.json`'s `content_scripts` match to all of
+  `youtube.com/*` -- still passes unchanged, confirming the floating
+  button's own page-scoping (`getPageKind()` in `content.js`) correctly
+  keeps it off every page except `/watch`/`/playlist` even though the
+  content script itself now loads everywhere.
+
+  Once this PR is merged and deployed, `extension_badges_live_test.js`
+  should be re-run directly against production (no local-server
+  workaround needed) as a follow-up sanity check -- it's written the same
+  way `extension_live_test.js` is and needs no changes to do that.

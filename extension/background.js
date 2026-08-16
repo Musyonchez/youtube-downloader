@@ -74,6 +74,17 @@ async function addToLibrary(video) {
   return apiFetch("/api/library/add", { method: "POST", body: JSON.stringify(video) });
 }
 
+async function removeFromLibrary(videoId) {
+  return apiFetch(`/api/library/${videoId}`, { method: "DELETE" });
+}
+
+// Batch status lookup for thumbnail_badges.js -- backend field is
+// `video_ids` (snake_case, matches StatusesRequest in app/api/routes.py);
+// the message's `videoIds` is just this extension's own internal naming.
+async function getStatuses(videoIds) {
+  return apiFetch("/api/statuses", { method: "POST", body: JSON.stringify({ video_ids: videoIds }) });
+}
+
 // Adds every 'new'-status video from a playlist-info response, skipping
 // already-queued/already-downloaded ones -- mirrors static/js's own
 // playlist-add semantics (search.js's searchByPlaylist +
@@ -116,6 +127,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       case "ADD_ALL_NEW_FROM_PLAYLIST":
         sendResponse(await addAllNewFromPlaylist(message.videos));
+        break;
+      case "REMOVE_FROM_LIBRARY":
+        sendResponse(await removeFromLibrary(message.videoId));
+        break;
+      case "GET_STATUSES":
+        sendResponse(await getStatuses(message.videoIds));
         break;
       case "OPEN_LOGIN_TAB":
         chrome.tabs.create({ url: LOGIN_URL });
