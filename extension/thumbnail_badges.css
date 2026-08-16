@@ -35,6 +35,13 @@
 .ytmp3-badge--new {
   background: #a06a2f; /* --accent */
   cursor: pointer;
+
+  /* The "+" glyph reads much smaller than the ✓/⏳ used for the other two
+     states at the same font-size -- those are emoji-ish characters with
+     more visual weight by default, a plain "+" needs a size/weight bump
+     to look equally substantial in the same 22px circle. */
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .ytmp3-badge--new:hover:not(:disabled) {
