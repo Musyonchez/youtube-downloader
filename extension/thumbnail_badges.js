@@ -27,6 +27,15 @@
 // ytd-playlist-video-renderer) even though live inspection didn't turn up
 // examples of those on the pages checked -- harmless to keep as selectors,
 // and they may still appear on layouts/locales/experiments not checked.
+//
+// `ytd-playlist-panel-video-renderer` was missed in that first pass: it's
+// the per-row element inside the auto-generated "Mix" panel that YouTube
+// shows in the sidebar for most watch pages (distinct from
+// `ytd-playlist-video-renderer`, which is a *playlist listing* page's row --
+// similar name, different tag, different context). Confirmed live
+// (2026-08) on a real Mix panel: the tag exists, each row has a real
+// `a[href*="/watch?v=..."]` anchor, and it was the reason badges were
+// completely absent from that very common sidebar view.
 
 const CONTAINER_SELECTOR = [
   "ytd-rich-item-renderer",
@@ -34,6 +43,7 @@ const CONTAINER_SELECTOR = [
   "ytd-compact-video-renderer",
   "ytd-grid-video-renderer",
   "ytd-playlist-video-renderer",
+  "ytd-playlist-panel-video-renderer",
   "yt-lockup-view-model",
 ].join(", ");
 
