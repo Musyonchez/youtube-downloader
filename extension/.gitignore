@@ -1,0 +1,6 @@
+# Never commit the private half of the dev keypair (see gen_key.js /
+# README.md) -- the manifest's "key" field (public key only) is what's
+# actually needed to reproduce the extension's stable ID; the private key
+# has no reason to leave this machine.
+dev_private_key.pem
+node_modules/

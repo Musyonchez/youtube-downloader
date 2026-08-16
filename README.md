@@ -224,7 +224,14 @@ youtube-downloader/
 ├── scripts/                 # One-off personal utility scripts
 │   ├── download_temp.py
 │   └── rename_bible.py
-├── tests/                   # pytest suite
+├── extension/                # Chrome (MV3) extension -- "Send to MP3 Queue"
+│   │                          # button on YouTube; sibling dir, never part of
+│   │                          # the server's Docker image. See extension/README.md.
+│   ├── manifest.json
+│   ├── background.js         # Service worker -- the only place that calls the API
+│   ├── content.js/.css       # Floating button injected on youtube.com
+│   └── popup/                # Toolbar icon popup (login status + web app link)
+├── tests/                   # pytest suite (+ tests/e2e/ for Playwright browser tests)
 ├── docs/                    # Audits, redesign history, deployment runbook -- see docs/README.md
 ├── run.sh                   # Startup script (Linux/macOS/Git Bash)
 ├── run.ps1                  # Startup script (native Windows PowerShell)

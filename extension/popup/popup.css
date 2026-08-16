@@ -1,0 +1,78 @@
+/* Popup styling -- same "warm analog" copper/teal palette as
+   static/css/variables.css, hardcoded here since the popup is its own
+   standalone document and doesn't load this app's stylesheet. */
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  width: 260px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0a0a0f;
+  color: #ffffff;
+}
+
+.brand {
+  margin-bottom: 12px;
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #c9853f; /* --accent-strong */
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #131318;
+  border: 1px solid #27272a;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6b7280; /* neutral while checking */
+  flex-shrink: 0;
+}
+
+.status-dot.logged-in {
+  background: #10b981; /* --success */
+}
+
+.status-dot.logged-out {
+  background: #f85149; /* --warning */
+}
+
+.open-app-link {
+  display: block;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #a06a2f 0%, #d99a3d 100%);
+}
+
+.open-app-link:hover {
+  filter: brightness(1.05);
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a8a8b3;
+  margin: 0;
+}

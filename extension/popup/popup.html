@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>YT MP3 Queue</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="brand">
+    <span class="brand-title">YT MP3 Queue</span>
+  </header>
+
+  <section class="status" id="status-section">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Checking session…</span>
+  </section>
+
+  <a class="open-app-link" id="open-app-link" href="https://yt-mp3-downloader.fly.dev/app/name" target="_blank" rel="noopener">
+    Open web app →
+  </a>
+
+  <p class="hint">
+    Visit a YouTube video or playlist page and use the floating
+    "Send to MP3 Queue" button to add it here without leaving YouTube.
+  </p>
+
+  <script src="../common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

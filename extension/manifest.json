@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "YT MP3 Queue",
+  "version": "1.0.0",
+  "description": "Send YouTube videos and playlists to your MP3 downloader's queue without leaving YouTube.",
+
+  "_comment_key": "This 'key' field pins the extension's ID to chrome-extension://lfcekljajioeijjmcaandpbdlgddlmda regardless of which folder it's loaded from (see extension/README.md). It is the DER SubjectPublicKeyInfo of a keypair generated for this dev build (extension/gen_key.js); the matching private key is NOT committed. The backend's CORS allowlist (app/main.py) trusts exactly this origin -- if this key ever changes, the backend must be updated to match, or every request from the extension will be rejected by CORS.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArQxKouBoyMavwus5qQHdCVZVjYsqHtMDGqiFiw7HhXr1l4l7WCnvoGCIy8kZbxFU5K4rY32R2wJV50LKYzGGfQUirJuLJABtgTIGcDq28gUpZVbFacwb7mYb+0WuEAHguiyd/sCtFYCxbSW2er7fkHkceFGF7XqaPqcsaLXXXeW7sKOTxhLKdnwOWtzPOHKHjorSjSwgSeaK1UeuFCuzQcu/2bFE+yeyxMp1TcbSzjsLeSc6kD8TuNFcHG+fQo3o3B+u/YHj+WTD7EdVi4yMu6Bgeu6bf9RWCyxZ+T8pPDqinDjzU7dsvOiNRnnVfx2aciU1QhWZFItHfU/+7xFuIQIDAQAB",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "YT MP3 Queue"
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "host_permissions": [
+    "https://yt-mp3-downloader.fly.dev/*",
+    "https://*.youtube.com/*"
+  ],
+
+  "permissions": [
+    "cookies",
+    "declarativeNetRequest",
+    "storage"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*",
+        "https://www.youtube.com/playlist*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

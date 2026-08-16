@@ -443,3 +443,48 @@ def test_websocket_accepted_with_session(tmp_path, monkeypatch):
         # No message expected immediately; just confirms the handshake
         # itself succeeded (didn't raise WebSocketDisconnect(4401)).
         ws.close()
+
+
+# ---------------------------------------------------------------------------
+# CORS (see app/main.py's CORSMiddleware setup): the Chrome extension
+# (docs/14, extension/README.md) needs a credentialed cross-origin request
+# from chrome-extension://<id> to carry the session cookie, which required
+# moving off allow_origins=["*"] to an explicit single-origin allowlist with
+# allow_credentials=True. These tests pin down that only the extension's own
+# origin gets the credentialed-CORS headers -- an arbitrary third-party
+# origin must not, or the allowlist has silently regressed back toward a
+# wildcard.
+# ---------------------------------------------------------------------------
+
+def test_cors_allows_extension_origin_with_credentials(tmp_path, monkeypatch):
+    client, _ = isolated_client(tmp_path, monkeypatch)
+
+    resp = client.options(
+        "/api/status",
+        headers={
+            "Origin": main.EXTENSION_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == main.EXTENSION_ORIGIN
+    assert resp.headers["access-control-allow-credentials"] == "true"
+
+
+def test_cors_rejects_arbitrary_third_party_origin(tmp_path, monkeypatch):
+    client, _ = isolated_client(tmp_path, monkeypatch)
+
+    resp = client.options(
+        "/api/status",
+        headers={
+            "Origin": "https://evil.example.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    # starlette's CORSMiddleware still returns 200 to the preflight itself,
+    # but omits the allow-origin header for a non-allowlisted origin -- the
+    # browser is what actually enforces the block on the real request based
+    # on that missing header, not the server returning an error status.
+    assert "access-control-allow-origin" not in resp.headers
