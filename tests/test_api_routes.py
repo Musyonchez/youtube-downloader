@@ -128,6 +128,31 @@ def test_get_downloaded_history(tmp_path, monkeypatch):
     assert {d["success"] for d in downloaded} == {True, False}
 
 
+def test_get_downloaded_history_is_paginated_newest_first(tmp_path, monkeypatch):
+    """docs/16, 16-8: /api/downloaded bounds what it returns per call and
+    reports `total` separately, instead of always returning the entire
+    (ever-growing) history table."""
+    storage = isolated_storage(tmp_path, monkeypatch)
+    # Explicit, distinct downloaded_at timestamps (bypassing
+    # add_to_downloaded's "now") -- three inserts in the same test could
+    # otherwise land in the same second and make ordering ambiguous.
+    for i in range(3):
+        storage.db.add_downloaded_item(
+            {**VIDEO, "video_id": f"v{i}", "success": True, "file_path": "x.mp3"},
+            downloaded_at=f"2026-01-0{i + 1} 00:00:00",
+        )
+
+    resp = client.get("/api/downloaded?limit=2&offset=0")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 3
+    assert [d["video_id"] for d in body["downloaded"]] == ["v2", "v1"]  # newest first
+
+    next_page = client.get("/api/downloaded?limit=2&offset=2")
+    assert [d["video_id"] for d in next_page.json()["downloaded"]] == ["v0"]
+
+
 def test_get_and_update_config(tmp_path, monkeypatch):
     isolated_storage(tmp_path, monkeypatch)
 

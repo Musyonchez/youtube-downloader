@@ -4,7 +4,7 @@ import logging
 import threading
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.services.download_orchestrator import run_download_task
@@ -195,10 +195,21 @@ async def clear_library() -> dict:
 
 
 @router.get("/api/downloaded")
-async def get_downloaded() -> dict:
-    """Get download history."""
-    downloaded = storage.load_downloaded()
-    return {"downloaded": downloaded}
+async def get_downloaded(
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> dict:
+    """Get a page of download history, newest-first (docs/16, 16-8).
+
+    The history table only ever grows (every attempt, success or failure,
+    is kept permanently) -- previously this returned the *entire* table on
+    every call, which meant every /history page load pulled progressively
+    more data as history grew. `limit`/`offset` bound each request; `total`
+    tells the caller how many more rows exist so it can page through the
+    rest (see static/js/history.js's "Load more").
+    """
+    downloaded = storage.load_downloaded(limit=limit, offset=offset, descending=True)
+    return {"downloaded": downloaded, "total": storage.count_downloaded()}
 
 
 @router.get("/api/config")

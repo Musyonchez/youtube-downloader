@@ -11,14 +11,26 @@ let historySearch = '';
 let historyPage = 1;
 const HISTORY_ITEMS_PER_PAGE = 24;
 
+// How many rows /api/downloaded is asked for per fetch, and how many more
+// exist server-side beyond what's currently loaded (docs/16, 16-8). The
+// backend no longer returns the entire (ever-growing) history table in one
+// call, so this page loads it in bounded batches instead -- an initial
+// batch on load, then "Load more" pulls the next one, appending onto
+// historyItems. Filter/search below still run over whatever's been loaded
+// so far, same as before this change.
+const HISTORY_FETCH_BATCH_SIZE = 200;
+let historyTotalOnServer = 0;
+let historyLoadingMore = false;
+
 async function loadHistory() {
     const grid = document.getElementById('results-grid');
     try {
-        const data = await apiCall('/api/downloaded');
-        // The API returns ascending by downloaded_at; newest-first reads
-        // better for a history view.
-        historyItems = [...data.downloaded].reverse();
-        document.getElementById('history-total').textContent = historyItems.length;
+        // The API returns newest-first already (docs/16, 16-8) -- no
+        // client-side reversal needed.
+        const data = await apiCall(`/api/downloaded?limit=${HISTORY_FETCH_BATCH_SIZE}&offset=0`);
+        historyItems = [...data.downloaded];
+        historyTotalOnServer = data.total;
+        document.getElementById('history-total').textContent = historyTotalOnServer;
         document.getElementById('history-failed').textContent = historyItems.filter(i => !i.success).length;
         renderHistory();
     } catch (error) {
@@ -28,6 +40,23 @@ async function loadHistory() {
                 <p>${error.message}</p>
             </div>
         `;
+    }
+}
+
+async function loadMoreHistory() {
+    if (historyLoadingMore || historyItems.length >= historyTotalOnServer) return;
+    historyLoadingMore = true;
+    try {
+        const offset = historyItems.length;
+        const data = await apiCall(`/api/downloaded?limit=${HISTORY_FETCH_BATCH_SIZE}&offset=${offset}`);
+        historyItems = [...historyItems, ...data.downloaded];
+        historyTotalOnServer = data.total;
+        document.getElementById('history-failed').textContent = historyItems.filter(i => !i.success).length;
+        renderHistory();
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        historyLoadingMore = false;
     }
 }
 
@@ -102,6 +131,21 @@ function renderHistory() {
         `;
         grid.appendChild(pagination);
     }
+
+    // More history exists on the server than has been fetched yet (docs/16,
+    // 16-8) -- offer to pull the next batch rather than silently capping
+    // what the page can ever show. Only surfaced once the local view is on
+    // its last loaded page, so it doesn't compete with Next/Previous above.
+    if (historyItems.length < historyTotalOnServer && historyPage === totalPages) {
+        const loadMore = document.createElement('div');
+        loadMore.className = 'pagination-controls';
+        loadMore.innerHTML = `
+            <button ${historyLoadingMore ? 'disabled' : ''} onclick="loadMoreHistory()">
+                ${historyLoadingMore ? 'Loading…' : `Load more (${historyTotalOnServer - historyItems.length} older)`}
+            </button>
+        `;
+        grid.appendChild(loadMore);
+    }
 }
 
 function changeHistoryPage(direction) {
@@ -161,12 +205,8 @@ async function retryDownload(item, btn) {
     }
 }
 
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast ${type}`;
-    setTimeout(() => toast.classList.add('hidden'), 3000);
-}
+// showToast() now lives in static/js/cards.js (docs/16, 16-19), shared
+// with ui.js instead of being defined here too.
 
 document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
