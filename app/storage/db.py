@@ -102,9 +102,29 @@ class Database:
             return row is not None
 
     # Downloaded operations
-    def get_downloaded(self) -> list[dict]:
+    def get_downloaded(self, limit: int | None = None, offset: int = 0, descending: bool = False) -> list[dict]:
+        """Return download-history rows, oldest first by default
+        (`descending=True` for newest first -- what the /history page
+        wants, so its "load more" can page from the newest end with a
+        plain OFFSET instead of fetching everything and reversing it).
+
+        `limit`/`offset` bound how much comes back in one call -- with the
+        table only growing (every attempt, success or failure, is kept
+        forever) and no cap, a plain `SELECT *` here means every page load
+        pulls the *entire* history into memory and over the wire, getting
+        slower release over release. `limit=None` (the default) keeps the
+        old unbounded behavior for callers that genuinely need everything
+        (e.g. tests, scripts) -- app/api/routes.py's /api/downloaded route
+        always passes an explicit bounded limit.
+        """
         with self._lock:
-            rows = self._conn.execute("SELECT * FROM downloaded ORDER BY downloaded_at").fetchall()
+            order = "DESC" if descending else "ASC"
+            query = f"SELECT * FROM downloaded ORDER BY downloaded_at {order}"
+            params: tuple = ()
+            if limit is not None:
+                query += " LIMIT ? OFFSET ?"
+                params = (limit, offset)
+            rows = self._conn.execute(query, params).fetchall()
             results = [dict(row) for row in rows]
             for result in results:
                 result['success'] = bool(result['success'])
@@ -187,6 +207,33 @@ class Database:
                 (username, password_hash, created_at),
             )
             self._conn.commit()
+
+    def create_user_if_first(self, username: str, password_hash: str, created_at: str) -> bool:
+        """Atomically create `username` as the account, but only if the
+        users table is still empty. Returns True if the account was
+        created, False if it wasn't (someone already registered).
+
+        This is the real fix for the registration race (docs/16, 16-1):
+        a plain "count_users() == 0, then create_user()" from the caller
+        is *two* separate lock acquisitions, so two concurrent requests
+        with two *different* usernames can each see count == 0 before
+        either commits, and both end up creating an account -- the
+        UNIQUE constraint on `username` only rejects a collision on the
+        same name, not a second, different account. Doing the count
+        check and the insert under one `_lock` acquisition here closes
+        that window: only the first caller to hold the lock while the
+        table is still empty gets to insert.
+        """
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM users").fetchone()
+            if int(row['n']) > 0:
+                return False
+            self._conn.execute(
+                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                (username, password_hash, created_at),
+            )
+            self._conn.commit()
+            return True
 
     def get_user(self, username: str) -> dict | None:
         with self._lock:

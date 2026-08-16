@@ -7,8 +7,6 @@ fresh client per test too here, since a shared module-level client would
 leak session cookies between tests the way test_api_routes.py's stateless
 routes never had to worry about.
 """
-import sqlite3
-
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -20,6 +18,8 @@ from app.storage.storage import Storage
 def isolated_client(tmp_path, monkeypatch):
     storage = Storage(str(tmp_path))
     monkeypatch.setattr(main, "auth_storage", storage)
+    # See tests/conftest.py's log_in_test_client for why this is reset per test.
+    monkeypatch.setattr(main, "_failed_login_attempts", {})
     return TestClient(app), storage
 
 
@@ -61,20 +61,15 @@ def test_register_refused_when_already_closed_even_via_direct_post(tmp_path, mon
 
 
 def test_register_race_condition_loser_gets_403_and_no_session(tmp_path, monkeypatch):
-    """The IntegrityError backstop (docs/15) end-to-end: two requests can
-    both pass register_submit's count_users() == 0 check before either
-    commits. test_db.py's test_users_duplicate_username_rejected already
-    covers the raw IntegrityError at the storage layer; this simulates the
-    actual race by making create_user raise it even though the route's own
-    pre-check saw zero users, and confirms register_submit maps that to a
-    403 with no session -- not a 500, and not a false "you're registered"."""
+    """The atomic create_user_if_first backstop (docs/16, 16-1) end-to-end:
+    it returns False when another request won the race and already created
+    the account, even though *this* request's caller-side view still looked
+    open. Confirms register_submit maps that to a 403 with no session --
+    not a 500, and not a false "you're registered"."""
     client, storage = isolated_client(tmp_path, monkeypatch)
     assert storage.count_users() == 0
 
-    def raise_integrity_error(*args, **kwargs):
-        raise sqlite3.IntegrityError("UNIQUE constraint failed: users.username")
-
-    monkeypatch.setattr(storage, "create_user", raise_integrity_error)
+    monkeypatch.setattr(storage, "create_user_if_first", lambda *a, **k: False)
 
     resp = client.post(
         "/register", data={"username": "alice", "password": "whatever1"}, follow_redirects=False
@@ -84,6 +79,33 @@ def test_register_race_condition_loser_gets_403_and_no_session(tmp_path, monkeyp
     assert storage.count_users() == 0
     assert storage.get_user("alice") is None
     assert "session" not in resp.cookies
+
+
+def test_register_concurrent_different_usernames_only_one_wins(tmp_path, monkeypatch):
+    """The actual bug docs/16's 16-1 describes: two concurrent registration
+    requests for two *different* usernames used to both be able to pass a
+    separate "count_users() == 0" check before either committed, since
+    the old create_user()'s UNIQUE constraint only rejects a collision on
+    the *same* username. create_user_if_first does the count-check and the
+    insert under one lock acquisition instead, so only one of two
+    concurrently-issued requests -- run here via a thread pool to actually
+    race them -- ends up creating an account."""
+    import concurrent.futures
+
+    from app.storage.storage import Storage
+
+    isolated_client(tmp_path, monkeypatch)  # just to get an isolated auth_storage dir
+    storage = Storage(str(tmp_path / "_race"))
+    monkeypatch.setattr(main, "auth_storage", storage)
+
+    def register(username):
+        return storage.create_user_if_first(username, "pbkdf2_sha256$260000$c2FsdA==$aGFzaA==")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(register, ["alice", "mallory"]))
+
+    assert sorted(results) == [False, True]
+    assert storage.count_users() == 1
 
 
 def test_register_get_shows_closed_message_when_already_registered(tmp_path, monkeypatch):
@@ -99,6 +121,153 @@ def test_register_get_shows_closed_message_when_already_registered(tmp_path, mon
     assert resp.status_code == 200
     assert "Registration is closed" in resp.text
     assert 'action="/register"' not in resp.text  # the form itself must not render
+
+
+def test_register_rejects_empty_username_or_password(tmp_path, monkeypatch):
+    """docs/16, 16-13: empty-credential registration must be refused, not
+    silently create an account with a blank username/password, and not a
+    500. Truly-empty form fields never reach register_submit at all --
+    FastAPI's own Form(...) validation rejects them with a 422 first (a
+    genuinely absent value and an empty string are indistinguishable to
+    it here); a whitespace-only username *does* reach register_submit's
+    own `username.strip()` check, which is exercised below."""
+    client, storage = isolated_client(tmp_path, monkeypatch)
+
+    resp = client.post("/register", follow_redirects=False)  # no username/password at all
+    assert resp.status_code == 422
+    assert storage.count_users() == 0
+    assert "session" not in resp.cookies
+
+    whitespace_resp = client.post(
+        "/register", data={"username": "   ", "password": "irrelevant"}, follow_redirects=False
+    )
+    assert whitespace_resp.status_code == 400
+    assert "required" in whitespace_resp.text
+    assert storage.count_users() == 0
+    assert "session" not in whitespace_resp.cookies
+
+
+def test_register_rejects_password_shorter_than_minimum(tmp_path, monkeypatch):
+    """docs/16, 16-9: server-side minimum password length -- the real
+    security boundary, same pattern as the registration-closed check
+    (client-side validation, if any, is not trustworthy on its own)."""
+    client, storage = isolated_client(tmp_path, monkeypatch)
+
+    resp = client.post(
+        "/register", data={"username": "alice", "password": "short"}, follow_redirects=False
+    )
+
+    assert resp.status_code == 400
+    assert "at least" in resp.text
+    assert storage.count_users() == 0
+    assert "session" not in resp.cookies
+
+
+def test_register_get_redirects_when_already_authenticated(tmp_path, monkeypatch):
+    """docs/16, 16-13: a logged-in visitor hitting GET /register (e.g. an
+    old bookmark/back-button) is bounced to the app, not shown a form that
+    would 403 on submit anyway."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+    client.post("/login", data={"username": "alice", "password": "correct-password"})
+
+    resp = client.get("/register", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/name"
+
+
+def test_login_get_redirects_when_already_authenticated(tmp_path, monkeypatch):
+    """docs/16, 16-13: a logged-in visitor hitting GET /login is bounced
+    straight to the app instead of being shown a login form again."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+    client.post("/login", data={"username": "alice", "password": "correct-password"})
+
+    resp = client.get("/login", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/name"
+
+
+def test_login_open_redirect_next_falls_back_to_default(tmp_path, monkeypatch):
+    """docs/16, 16-13: `next` must be validated as a same-app relative path
+    (_safe_next_path in app/main.py) -- a protocol-relative or absolute
+    `next` pointing off-site must never be honored, even on a successful
+    login."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+
+    for evil_next in ("//evil.example.com", "https://evil.example.com/phish", "http://evil.example.com"):
+        resp = client.post(
+            "/login",
+            data={"username": "alice", "password": "correct-password", "next": evil_next},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/app/name"
+        client.post("/logout")
+
+
+def test_login_open_redirect_allows_safe_relative_next(tmp_path, monkeypatch):
+    """The other half of 16-13's open-redirect coverage: a genuine
+    same-app relative path must still work, so the fix isn't just
+    "always ignore next"."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+
+    resp = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password", "next": "/history"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/history"
+
+
+def test_login_rate_limit_blocks_rapid_repeated_failures(tmp_path, monkeypatch):
+    """docs/16, 16-2: repeated failed logins for the same username get
+    rate-limited (429) rather than allowed at unlimited speed."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+
+    first = client.post("/login", data={"username": "alice", "password": "wrong"})
+    assert first.status_code == 401
+
+    second = client.post("/login", data={"username": "alice", "password": "wrong"})
+    assert second.status_code == 429
+
+    # Even the *correct* password is refused while the cooldown is active --
+    # this limits attempt rate, not just wrong-password attempts.
+    third = client.post("/login", data={"username": "alice", "password": "correct-password"})
+    assert third.status_code == 429
+    assert "session" not in third.cookies
+
+
+def test_login_rate_limit_is_per_username(tmp_path, monkeypatch):
+    """A cooldown on one username must not lock out a login attempt for a
+    different one."""
+    from app.passwords import hash_password
+
+    client, storage = isolated_client(tmp_path, monkeypatch)
+    storage.create_user("alice", hash_password("correct-password"))
+    storage.create_user("bob", hash_password("bobs-password"))
+
+    client.post("/login", data={"username": "alice", "password": "wrong"})
+
+    resp = client.post("/login", data={"username": "bob", "password": "bobs-password"}, follow_redirects=False)
+    assert resp.status_code == 303
 
 
 def test_login_wrong_password_rejected(tmp_path, monkeypatch):

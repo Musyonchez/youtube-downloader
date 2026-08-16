@@ -87,6 +87,51 @@ def test_downloaded_failed_download_is_not_is_downloaded(db):
     assert db.is_downloaded("abc123") is False
 
 
+def test_downloaded_pagination_limit_and_offset(db):
+    """docs/16, 16-8: get_downloaded's limit/offset actually bound and
+    page through the result set instead of always returning everything."""
+    for i in range(5):
+        db.add_downloaded_item(
+            {**make_video(f"v{i}"), "success": True, "file_path": "x.mp3"},
+            downloaded_at=f"2026-01-0{i + 1} 00:00:00",
+        )
+
+    first_page = db.get_downloaded(limit=2, offset=0)
+    second_page = db.get_downloaded(limit=2, offset=2)
+    remainder = db.get_downloaded(limit=2, offset=4)
+
+    assert [r["video_id"] for r in first_page] == ["v0", "v1"]
+    assert [r["video_id"] for r in second_page] == ["v2", "v3"]
+    assert [r["video_id"] for r in remainder] == ["v4"]
+
+
+def test_downloaded_pagination_descending(db):
+    """docs/16, 16-8: `descending=True` returns newest-first, so the
+    /history page can page from the newest end without fetching everything
+    and reversing it client-side."""
+    for i in range(3):
+        db.add_downloaded_item(
+            {**make_video(f"v{i}"), "success": True, "file_path": "x.mp3"},
+            downloaded_at=f"2026-01-0{i + 1} 00:00:00",
+        )
+
+    newest_first = db.get_downloaded(descending=True)
+
+    assert [r["video_id"] for r in newest_first] == ["v2", "v1", "v0"]
+
+
+def test_downloaded_no_limit_returns_everything(db):
+    """limit=None (the default) keeps the old unbounded behavior for
+    callers that genuinely want the whole table."""
+    for i in range(3):
+        db.add_downloaded_item(
+            {**make_video(f"v{i}"), "success": True, "file_path": "x.mp3"},
+            downloaded_at=f"2026-01-0{i + 1} 00:00:00",
+        )
+
+    assert len(db.get_downloaded()) == 3
+
+
 def test_get_statuses_batch(db):
     db.add_library_item(make_video("queued1"), added_at="2026-01-01 00:00:00")
     db.add_downloaded_item(
@@ -150,3 +195,22 @@ def test_users_duplicate_username_rejected(db):
         db.create_user("alice", "hash2", created_at="2026-01-02 00:00:00")
     # Original hash must be untouched by the rejected attempt.
     assert db.get_user("alice")["password_hash"] == "hash1"
+
+
+def test_create_user_if_first_succeeds_when_empty(db):
+    """docs/16, 16-1: the atomic path used by register_submit."""
+    created = db.create_user_if_first("alice", "hash1", created_at="2026-01-01 00:00:00")
+    assert created is True
+    assert db.count_users() == 1
+    assert db.get_user("alice")["password_hash"] == "hash1"
+
+
+def test_create_user_if_first_refuses_second_account(db):
+    """The actual registration-race fix (docs/16, 16-1): unlike the old
+    "count_users() == 0, then create_user()" (two separate calls), this is
+    one atomic check-and-insert -- a second call for a *different*
+    username is refused just as reliably as a same-username collision."""
+    assert db.create_user_if_first("alice", "hash1", created_at="2026-01-01 00:00:00") is True
+    assert db.create_user_if_first("mallory", "hash2", created_at="2026-01-02 00:00:00") is False
+    assert db.count_users() == 1
+    assert db.get_user("mallory") is None

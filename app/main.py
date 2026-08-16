@@ -3,7 +3,7 @@
 import logging
 import os
 import secrets
-import sqlite3
+import time
 from datetime import datetime
 from urllib.parse import urlsplit
 
@@ -15,9 +15,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.routes import router
+from app.api.routes import storage as auth_storage
 from app.passwords import hash_password, verify_password
 from app.session_auth import SessionAuthMiddleware
-from app.storage.storage import Storage
 from app.ws_manager import manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,11 +29,23 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Own Storage instance for the auth routes below (app/api/routes.py has its
-# own module-level `storage` for the library/download endpoints -- kept
-# separate rather than importing that one, since tests isolate routes.py's
-# storage independently and importing it here would couple the two).
-auth_storage = Storage()
+# Auth routes below reuse app/api/routes.py's module-level `storage`
+# instance (docs/16, 16-6) rather than constructing a second, independent
+# Storage/Database -- both used to point at the same on-disk `data/`
+# directory, so two live instances meant two separate sqlite3 connections
+# open against the same file for no benefit, plus config/library/downloaded
+# state read through one instance could lag what the other just wrote.
+# Tests still isolate this from routes.storage independently by
+# monkeypatching each module's own reference (see tests/conftest.py and
+# tests/test_api_routes.py) -- that's a test-only concern; in the running
+# app there is exactly one Storage instance.
+
+# Minimum wait between failed login attempts for a given username, doubling
+# up to a cap -- see login_submit (docs/16, 16-2). Single-account app, so a
+# per-username in-process counter is enough; no need for a new dependency.
+_LOGIN_COOLDOWN_BASE_SECONDS = 1.0
+_LOGIN_COOLDOWN_MAX_SECONDS = 30.0
+_failed_login_attempts: dict[str, tuple[int, float]] = {}
 
 # SECRET_KEY signs the session cookie (itsdangerous, via Starlette's
 # SessionMiddleware) -- treat it like any other credential. Read from the
@@ -51,6 +63,17 @@ if not SECRET_KEY:
         "Sessions will not survive a restart. Set SECRET_KEY as a persistent "
         "secret in production (see docs/14-deployment.md)."
     )
+
+# Whether this process is a real deploy (Secure cookies required) or local/
+# LAN dev (plain HTTP, so a Secure cookie would never come back and login
+# would silently break). Previously this was inferred from "is SECRET_KEY
+# set", which conflates two unrelated things -- SECRET_KEY can legitimately
+# be set locally too (e.g. to test session persistence across restarts),
+# which would have wrongly forced Secure cookies over plain HTTP (docs/16,
+# 16-7). FLY_APP_NAME is set automatically by the Fly.io runtime for every
+# deployed app, so it's a reliable, purpose-built signal instead; ENVIRONMENT
+# is an explicit escape hatch for any other real deploy target.
+IS_PRODUCTION = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("ENVIRONMENT") == "production")
 
 # Middleware order matters and is easy to get backwards silently (see
 # app/session_auth.py's docstring): Starlette runs the *last*-added
@@ -70,10 +93,10 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     same_site="lax",
-    # Secure cookie only when SECRET_KEY is explicitly set (i.e. a real
-    # deploy, not local dev) -- local/LAN use is plain HTTP, and a Secure
-    # cookie would never be sent back over it, silently breaking login.
-    https_only=bool(os.environ.get("SECRET_KEY")),
+    # Secure cookie only in a real deploy (see IS_PRODUCTION above) --
+    # local/LAN use is plain HTTP, and a Secure cookie would never be sent
+    # back over it, silently breaking login.
+    https_only=IS_PRODUCTION,
 )
 
 # Mount static files
@@ -175,21 +198,59 @@ async def login_form(request: Request, next: str | None = None):
     return templates.TemplateResponse(request, "login.html", {"next": next or ""})
 
 
+def _login_cooldown_remaining(username: str) -> float:
+    """Seconds a client must still wait before this username can attempt
+    another login -- 0 if it's free to try now. Doubles per consecutive
+    failure (1s, 2s, 4s, ... capped at _LOGIN_COOLDOWN_MAX_SECONDS), reset
+    on any successful login. In-process only (docs/16, 16-2): good enough
+    for this app's single-account scope (a distributed store would only
+    matter across multiple app instances, which this deploy doesn't have),
+    and avoids pulling in a new dependency like slowapi for one counter."""
+    entry = _failed_login_attempts.get(username)
+    if entry is None:
+        return 0.0
+    failures, last_attempt_at = entry
+    wait = min(_LOGIN_COOLDOWN_BASE_SECONDS * (2 ** (failures - 1)), _LOGIN_COOLDOWN_MAX_SECONDS)
+    remaining = wait - (time.monotonic() - last_attempt_at)
+    return float(max(0.0, remaining))
+
+
+def _record_login_failure(username: str) -> None:
+    failures, _ = _failed_login_attempts.get(username, (0, 0.0))
+    _failed_login_attempts[username] = (failures + 1, time.monotonic())
+
+
+def _clear_login_failures(username: str) -> None:
+    _failed_login_attempts.pop(username, None)
+
+
 @app.post("/login")
 async def login_submit(
     request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("")
 ):
     """Verify credentials and start a session. Wrong username/password
     re-renders the form with an error and a 401 status -- never a silent
-    200 with no session set."""
+    200 with no session set. Also enforced: a short, doubling cooldown per
+    username after each failed attempt (docs/16, 16-2), so a brute-force
+    script can't hammer the single account's password at network speed."""
+    cooldown = _login_cooldown_remaining(username)
+    if cooldown > 0:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"next": next, "error": "Too many attempts. Please wait a moment and try again."},
+            status_code=429,
+        )
+
     user = auth_storage.get_user(username)
     if user is None or not verify_password(password, user["password_hash"]):
+        _record_login_failure(username)
         return templates.TemplateResponse(
             request, "login.html",
             {"next": next, "error": "Incorrect username or password."},
             status_code=401,
         )
 
+    _clear_login_failures(username)
     request.session["user"] = username
     return RedirectResponse(_safe_next_path(next), status_code=303)
 
@@ -206,16 +267,23 @@ async def register_form(request: Request):
     return templates.TemplateResponse(request, "register.html", {"closed": closed})
 
 
+_MIN_PASSWORD_LENGTH = 8
+
+
 @app.post("/register")
 async def register_submit(request: Request, username: str = Form(...), password: str = Form(...)):
     """Create the sole account, if none exists yet. This is the actual
     security boundary (docs/15) -- re-checks count_users() == 0 itself
     rather than trusting that the GET page's check was honored, since this
     route can be hit directly (curl/devtools), bypassing the UI entirely.
-    Also guards the race where two requests both pass the count check
-    before either commits: create_user's PRIMARY KEY constraint raises
-    IntegrityError for the loser, which is treated the same as "registration
-    already closed".
+
+    The count-check and the insert happen atomically in
+    auth_storage.create_user_if_first (docs/16, 16-1) -- a plain
+    "count_users() == 0, then create_user()" here would be two separate
+    storage calls with a window between them where two concurrent requests
+    for two *different* usernames could each see zero users and both go on
+    to create an account; the username-collision case (same name twice) was
+    the only thing the old IntegrityError backstop actually caught.
     """
     username = username.strip()
     if not username or not password:
@@ -223,12 +291,15 @@ async def register_submit(request: Request, username: str = Form(...), password:
             request, "register.html", {"error": "Username and password are required."}, status_code=400,
         )
 
-    if auth_storage.count_users() > 0:
-        return HTMLResponse("<h1>Registration is closed.</h1>", status_code=403)
+    if len(password) < _MIN_PASSWORD_LENGTH:
+        return templates.TemplateResponse(
+            request, "register.html",
+            {"error": f"Password must be at least {_MIN_PASSWORD_LENGTH} characters."},
+            status_code=400,
+        )
 
-    try:
-        auth_storage.create_user(username, hash_password(password))
-    except sqlite3.IntegrityError:
+    created = auth_storage.create_user_if_first(username, hash_password(password))
+    if not created:
         return HTMLResponse("<h1>Registration is closed.</h1>", status_code=403)
 
     request.session["user"] = username

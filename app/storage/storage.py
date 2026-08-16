@@ -93,9 +93,11 @@ class Storage:
         return self.db.count_library()
 
     # Downloaded operations
-    def load_downloaded(self) -> list[dict]:
-        """Load downloaded history."""
-        return self.db.get_downloaded()
+    def load_downloaded(self, limit: int | None = None, offset: int = 0, descending: bool = False) -> list[dict]:
+        """Load downloaded history. `limit`/`offset` page through it
+        instead of loading the whole (ever-growing) table -- see
+        db.Database.get_downloaded's docstring (docs/16, 16-8)."""
+        return self.db.get_downloaded(limit=limit, offset=offset, descending=descending)
 
     def count_downloaded(self) -> int:
         """Number of items in download history."""
@@ -134,6 +136,15 @@ class Storage:
         """Create a new user account. Raises sqlite3.IntegrityError if the
         username already exists -- see db.create_user's docstring."""
         self.db.create_user(username, password_hash, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    def create_user_if_first(self, username: str, password_hash: str) -> bool:
+        """Atomically create `username` as the sole account, only if no
+        account exists yet. Returns False (does nothing) if one already
+        does -- this is the actual registration-race fix (docs/16, 16-1),
+        see db.create_user_if_first's docstring."""
+        return self.db.create_user_if_first(
+            username, password_hash, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
     def get_user(self, username: str) -> dict | None:
         """Look up a user by username, or None if it doesn't exist."""
