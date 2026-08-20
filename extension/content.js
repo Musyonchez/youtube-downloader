@@ -39,6 +39,18 @@ function canonicalPlaylistUrl() {
   return `https://www.youtube.com/playlist?list=${listId}`;
 }
 
+// YouTube's auto-generated "Mix" playlists (the sidebar radio YouTube builds
+// for almost any video) use list IDs starting with "RD" -- a real, curated
+// playlist a user made uses "PL"/"UU"/"FL"/etc instead. Mixes are explicitly
+// NOT bulk-addable here: they're an algorithmic, often-huge, ever-shifting
+// stream, not a deliberate collection -- "add this playlist" makes sense for
+// a real playlist and not for one of these. When the current list is a Mix,
+// this extension only ever offers the single video, never the whole thing --
+// see handleMixPage below.
+function isMixListId(listId) {
+  return typeof listId === "string" && listId.toUpperCase().startsWith("RD");
+}
+
 function removeButton() {
   document.getElementById(BUTTON_ID)?.remove();
 }
@@ -151,6 +163,41 @@ async function handlePlaylistPage(button, url, token) {
   });
 }
 
+// A "seed video" Mix's list ID is literally "RD" + that video's 11-char id
+// (confirmed live: "RDNWdrO4BoCu8" for a mix seeded from video NWdrO4BoCu8)
+// -- so the first song's id can be read straight out of the URL, no API
+// call needed. Other Mix subtypes (genre/mood mixes like "RDCLAK5uy...",
+// personalized "RDAMVM..." mixes) don't encode a single seed video this
+// way; isSeedVideoMixId returns null for those rather than guessing.
+function seedVideoIdFromMixListId(listId) {
+  const match = /^RD([A-Za-z0-9_-]{11})$/.exec(listId || "");
+  return match ? match[1] : null;
+}
+
+// A Mix's own /playlist?list=RD... page (isMixListId above) -- rather than
+// offering "Send N videos to Queue" for the whole algorithmic mix, this
+// derives the mix's first (seed) video and hands off to the exact same
+// single-video flow a /watch page would use (handleVideoPage), so status-
+// checking/add/queued/downloaded states all come from one code path.
+//
+// Deliberately NOT calling /api/playlist-info here (confirmed live: yt-dlp
+// can't resolve a bare Mix /playlist page independent of a seed video --
+// GET_PLAYLIST_INFO 404s on these every time, not a transient failure a
+// retry button would ever fix) -- the list ID itself is the reliable
+// source for the subtype this handles.
+function handleMixPage(button, listId, token) {
+  const videoId = seedVideoIdFromMixListId(listId);
+  if (!videoId) {
+    setButtonState(button, {
+      label: "Mix can't be added directly — open a song from it",
+      variant: "warn",
+      disabled: true,
+    });
+    return;
+  }
+  handleVideoPage(button, `https://www.youtube.com/watch?v=${videoId}`, token);
+}
+
 async function addPlaylist(button, videos, token) {
   setButtonState(button, { label: "Adding…", variant: "loading", disabled: true });
 
@@ -181,13 +228,18 @@ function refresh() {
     const button = ensureButton();
     handleVideoPage(button, url, token);
   } else if (kind === "playlist") {
+    const listId = new URLSearchParams(location.search).get("list");
     const url = canonicalPlaylistUrl();
     if (!url) {
       removeButton();
       return;
     }
     const button = ensureButton();
-    handlePlaylistPage(button, url, token);
+    if (isMixListId(listId)) {
+      handleMixPage(button, listId, token);
+    } else {
+      handlePlaylistPage(button, url, token);
+    }
   } else {
     removeButton();
   }
